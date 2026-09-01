@@ -9,7 +9,7 @@
 //    GitHub Pages project subpath like /repo-name/), by using only paths that are
 //    relative to this file's own location.
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const CACHE_NAME = "quran-journal-" + CACHE_VERSION;
 
 // Resolve the app shell URLs relative to this service worker's own location so this
@@ -113,5 +113,50 @@ self.addEventListener("fetch", (event) => {
         return res;
       })
       .catch(() => caches.match(req))
+  );
+});
+
+// ===== Push notification reminders =====
+// Fired by the browser/OS when a push message arrives from the reminder backend —
+// including while this app is fully closed (supported by Android/Chrome; on
+// iPhone, only for a copy of this app added to the Home Screen, per Apple's
+// restrictions — see README-PWA-SETUP.md).
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (err) {
+    data = { title: "🤍 Time for your dhikr", body: "Open your Quran journal for a quiet moment." };
+  }
+
+  const title = data.title || "🤍 Time for your dhikr";
+  const options = {
+    body: data.body || "Open your Quran journal for a quiet moment.",
+    icon: data.icon || "icons/icon-192.png",
+    badge: data.badge || "icons/icon-96.png",
+    data: { url: data.url || "./index.html" },
+    tag: "quran-journal-reminder",
+    renotify: true,
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Tapping a reminder notification: focus an already-open tab if there is one,
+// otherwise open a new one to the app.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = new URL(
+    (event.notification.data && event.notification.data.url) || "./index.html",
+    self.registration.scope
+  ).toString();
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url === targetUrl && "focus" in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(targetUrl);
+    })
   );
 });

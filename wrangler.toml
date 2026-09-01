@@ -1,0 +1,31 @@
+name = "quran-journal-push"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+# Runs every 15 minutes. This is just how often the Worker *checks* whether any
+# subscriber is due for a reminder right now — each individual user still only
+# gets pushed once every N hours (their own chosen interval), and only inside
+# their own chosen active-hours window. 15 minutes keeps the actual send time
+# reasonably close to the top of each user's interval without costing much on
+# Cloudflare's free tier (well within the free Cron Trigger + Worker request limits
+# for a personal-scale app).
+[triggers]
+crons = ["*/15 * * * *"]
+
+# Plain (non-secret) config. Safe to commit — the VAPID *public* key is meant to be
+# public, and the subject is just a contact email/URL required by the Web Push spec.
+[vars]
+VAPID_SUBJECT = "mailto:you@example.com"
+VAPID_PUBLIC_KEY = "REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY"
+
+# The VAPID *private* key is set separately as an encrypted secret, never committed
+# to the repo. See push-server/README.md for the exact command.
+#   wrangler secret put VAPID_PRIVATE_KEY
+
+# KV namespace used to store each push subscription + the reminder preferences
+# that go with it (active hours, interval, on/off, last-sent time). Create this
+# with `wrangler kv namespace create SUBSCRIPTIONS` and paste the id it prints
+# below, replacing the placeholder.
+[[kv_namespaces]]
+binding = "SUBSCRIPTIONS"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"

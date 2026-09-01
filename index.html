@@ -111,6 +111,123 @@ function saveJournalState(state) {
 function getDateKey(d) {
     return d.toISOString().split("T")[0];
 }
+// ===== Reminder push notifications =====
+//
+// TODO: after deploying the Worker in push-server/ (see push-server/README.md),
+// replace this with your actual Worker URL, e.g.
+// "https://quran-journal-push.yourname.workers.dev" (no trailing slash).
+const PUSH_SERVER_URL = "https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev";
+function isPushBackendConfigured() {
+    return typeof PUSH_SERVER_URL === "string" && PUSH_SERVER_URL.indexOf("YOUR-WORKER-NAME") === -1;
+}
+// Web Push requires the VAPID public key as a Uint8Array, but servers hand it out
+// as a URL-safe base64 string — this is the standard conversion between the two.
+function urlBase64ToUint8Array(base64String) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; i++)
+        outputArray[i] = rawData.charCodeAt(i);
+    return outputArray;
+}
+// On iPhone/iPad, Safari only exposes the Push API to a copy of the site that's
+// been added to the Home Screen — a normal browser tab can't use it at all, by
+// Apple's own design (not something this app can work around).
+function isIOS() {
+    return /iphone|ipad|ipod/i.test(window.navigator.userAgent || "");
+}
+function isIOSStandalone() {
+    return window.navigator.standalone === true;
+}
+function isPushSupported() {
+    return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+}
+async function subscribeToPush() {
+    const reg = await navigator.serviceWorker.ready;
+    let subscription = await reg.pushManager.getSubscription();
+    if (!subscription) {
+        const keyRes = await fetch(PUSH_SERVER_URL + "/vapid-public-key");
+        if (!keyRes.ok)
+            throw new Error("Could not reach the reminder server.");
+        const { publicKey } = await keyRes.json();
+        subscription = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+    }
+    return subscription;
+}
+async function sendPrefsToServer(subscription, reminderPrefsObj, challengePrefsObj) {
+    const res = await fetch(PUSH_SERVER_URL + "/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            subscription: subscription.toJSON ? subscription.toJSON() : subscription,
+            prefs: {
+                enabled: reminderPrefsObj.enabled,
+                activeStartHour: reminderPrefsObj.activeStartHour,
+                activeEndHour: reminderPrefsObj.activeEndHour,
+                intervalHours: reminderPrefsObj.intervalHours,
+                challengeMode: challengePrefsObj.mode,
+                challengeHour: challengePrefsObj.hour,
+                challengeWeekday: challengePrefsObj.weekday,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+            },
+        }),
+    });
+    if (!res.ok)
+        throw new Error("The reminder server didn't accept the request (" + res.status + ").");
+}
+async function unsubscribeFromPush() {
+    if (!isPushSupported())
+        return;
+    const reg = await navigator.serviceWorker.ready;
+    const subscription = await reg.pushManager.getSubscription();
+    if (!subscription)
+        return;
+    try {
+        await fetch(PUSH_SERVER_URL + "/unsubscribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ subscription: subscription.toJSON ? subscription.toJSON() : subscription }),
+        });
+    }
+    catch (err) {
+        console.warn("Could not reach reminder server to unsubscribe (will still unsubscribe locally):", err);
+    }
+    await subscription.unsubscribe();
+}
+async function sendTestPush() {
+    const reg = await navigator.serviceWorker.ready;
+    const subscription = await reg.pushManager.getSubscription();
+    if (!subscription)
+        throw new Error("Not subscribed yet — turn reminders on first.");
+    const res = await fetch(PUSH_SERVER_URL + "/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscription: subscription.toJSON ? subscription.toJSON() : subscription }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) {
+        throw new Error(data.detail || data.error || "The test reminder could not be sent.");
+    }
+}
+async function sendTestChallenge(kind) {
+    const reg = await navigator.serviceWorker.ready;
+    const subscription = await reg.pushManager.getSubscription();
+    if (!subscription)
+        throw new Error("Not subscribed yet — turn on daily or weekly challenges first.");
+    const res = await fetch(PUSH_SERVER_URL + "/test-challenge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscription: subscription.toJSON ? subscription.toJSON() : subscription, kind }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) {
+        throw new Error(data.detail || data.error || "The test challenge could not be sent.");
+    }
+}
 // Longest run of consecutive checked days ending today or yesterday
 function currentStreak(tracker) {
     let streak = 0;
@@ -125,6 +242,62 @@ function currentStreak(tracker) {
     }
     return streak;
 }
+// ===== Islamic Reminders & Challenges — client-side mirror =====
+// Kept in sync with push-server/src/index.js's message pools, purely so
+// "Today's Challenge" can show something in the app even without a push
+// notification having arrived (e.g. notifications off, or just opening the
+// app on your own). The pick is date-seeded so it's stable all day.
+const DAILY_CHALLENGES_CLIENT = [
+    { title: "🤍 Have you made your morning adhkar today?", body: "A few quiet moments before the day gets loud." },
+    { title: "📖 Take 5 minutes to read Qur'an", body: "Even a few ayat can change the shape of your day." },
+    { title: "🤲 Pause for a moment and make istighfar", body: "Astaghfirullah — a small return, repeated often." },
+    { title: "🤍 Send salawat upon the Prophet ﷺ", body: "Allahumma salli ala Muhammad." },
+    { title: "🤲 Make a dua for something on your heart", body: "Whatever it is, however small it feels." },
+    { title: "📖 Read one ayah and reflect on its meaning", body: "Slow down. Let one verse really land." },
+    { title: "🤍 Before you continue your day, remember Allah", body: "One pause, one dhikr, one breath." },
+    { title: "🧠 What are you grateful for today?", body: "Write it down in your journal." },
+    { title: "🤍 Take a moment to say Alhamdulillah", body: "Name one thing you're grateful for right now." },
+    { title: "🚶 Make dhikr while you walk, drive, or wait", body: "Turn today's in-between moments into worship." },
+    { title: "🕌 Have you prayed your salah on time today?", body: "A gentle check-in, nothing more." },
+    { title: "📵 Put your phone down for a moment", body: "Reconnect with Allah before you scroll any further." },
+    { title: "📖 Read a surah you haven't opened in a while", body: "Rediscover something familiar, from a new place in life." },
+    { title: "📖 Memorize one short ayah today", body: "Small and steady — one verse at a time." },
+    { title: "🤲 Make dua for someone who is struggling", body: "You may never know how much it helps them." },
+    { title: "🌱 Do one good deed secretly today", body: "Let it be just between you and Allah." },
+    { title: "🌱 Give a small sadaqah today", body: "It doesn't have to be much to count." },
+    { title: "🌱 Check on someone you love", body: "A short message can mean more than you think." },
+    { title: "🧠 What is one blessing Allah gave you today?", body: "Open your journal and write it down." },
+    { title: "🧠 What is something you need to leave in Allah's hands?", body: "Write it down, then let it go." },
+];
+const WEEKLY_CHALLENGES_CLIENT = [
+    { title: "📖 Week 1 — Qur'an Week", body: "This week's focus: read at least 1 page of Qur'an every day." },
+    { title: "🤍 Week 2 — Dhikr Week", body: "This week's focus: build the habit of morning and evening adhkar." },
+    { title: "🌱 Week 3 — Gratitude Week", body: "This week's focus: write 3 blessings every day." },
+    { title: "💗 Week 4 — Sadaqah Week", body: "This week's focus: one small act of charity, every day." },
+    { title: "🕌 Week 5 — Salah Week", body: "This week's focus: pray each salah on time." },
+    { title: "🤲 Week 6 — Dua Week", body: "This week's focus: write one sincere dua every day." },
+    { title: "🌸 Week 7 — Character Week", body: "This week's focus: choose one character trait to work on." },
+    { title: "📵 Week 8 — Digital Detox Week", body: "This week's focus: a little less scrolling, a little more Qur'an." },
+];
+function isoWeekNumberClient(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+}
+function todaysChallenge() {
+    const key = getDateKey(new Date());
+    let hash = 0;
+    for (let i = 0; i < key.length; i++)
+        hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+    return DAILY_CHALLENGES_CLIENT[hash % DAILY_CHALLENGES_CLIENT.length];
+}
+function thisWeeksChallenge() {
+    const week = isoWeekNumberClient(new Date());
+    return WEEKLY_CHALLENGES_CLIENT[week % WEEKLY_CHALLENGES_CLIENT.length];
+}
+const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const COLORS = {
     dustyPink: "#D8B4A0",
     sand: "#EADBC8",
@@ -176,11 +349,14 @@ const globalStyles = `
   @supports (height: 100dvh) {
     .book-page { max-height: 70dvh !important; }
   }
-  @keyframes pinFloat {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
+  @keyframes pinGlow {
+    0%, 100% { box-shadow: 0 6px 18px rgba(107,91,78,0.35); }
+    50% { box-shadow: 0 6px 26px rgba(212,175,55,0.55); }
   }
-  .pin-book-btn { animation: pinFloat 3s ease-in-out infinite; }
+  /* A glow pulse (not a position change) so the button's tap target never moves —
+     a continuously-moving element can make real touch taps miss or get cancelled. */
+  .pin-book-btn { animation: pinGlow 3s ease-in-out infinite; }
+  .pin-book-btn:active { animation: none; }
 `;
 const SURAHS = [
     { number: 1, arabic: "الفاتحة", name: "Al-Fatiha", meaning: "The Opening", type: "Makki", ayahs: 7, themes: ["Praise of Allah", "Guidance", "The straight path", "Master of Judgment Day"], summary: "Al-Fatiha is the opening chapter of the Quran — the most recited prayer in Islam, said in every unit of salah. It is a perfect conversation between you and Allah, where you praise Him, acknowledge His sovereignty, and beg Him to guide you to the straight path.", tafsir: "Often called 'Umm Al-Quran' (Mother of the Quran), Al-Fatiha encapsulates the entire message of Islam. The first three verses declare Allah's absolute perfection, mercy, and ownership of the Day of Judgment. The second half is our personal plea — acknowledging that only Allah deserves worship and only from Him we seek help. The final verses are a dua to be guided like the prophets and righteous, not like those who earned wrath or went astray.", favoriteAyah: { arabic: "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ", english: "You alone we worship, and You alone we ask for help.", explanation: "This verse is the heart of Al-Fatiha — a direct declaration of tawheed and complete reliance on Allah. It reminds us that no matter how hard life gets, our help comes only from Him." }, dua: "O Allah, guide me to the straight path — the path of those You have blessed, not of those who have gone astray. Keep my heart firm on Your deen and make every step of my life a step closer to You. Ameen." },
@@ -601,6 +777,15 @@ function QuranJournal() {
     const [lastRead, setLastRead] = useState(null); // surah number
     const [dhikrCounts, setDhikrCounts] = useState({}); // { "YYYY-MM-DD:dhikrId": count }
     const [dhikrCategory, setDhikrCategory] = useState("Morning");
+    const [reminderPrefs, setReminderPrefs] = useState({ enabled: false, activeStartHour: 7, activeEndHour: 21, intervalHours: 3 });
+    const [reminderStatus, setReminderStatus] = useState("idle"); // idle | working | error
+    const [reminderError, setReminderError] = useState("");
+    const [testPushStatus, setTestPushStatus] = useState("idle"); // idle | sending | sent | error
+    const [challengePrefs, setChallengePrefs] = useState({ mode: "off", hour: 9, weekday: 1 }); // mode: off|daily|weekly|both
+    const [challengeStatus, setChallengeStatus] = useState("idle"); // idle | working | error
+    const [challengeError, setChallengeError] = useState("");
+    const [testChallengeStatus, setTestChallengeStatus] = useState("idle");
+    const [challengeLog, setChallengeLog] = useState({}); // { "YYYY-MM-DD": true } — for the local streak
     const [bookOpen, setBookOpen] = useState(false);
     const [bookPageIdx, setBookPageIdx] = useState(0);
     const [bookFlipping, setBookFlipping] = useState(false);
@@ -622,8 +807,22 @@ function QuranJournal() {
             setLastRead(saved.lastRead || null);
             setDhikrCounts(saved.dhikrCounts || {});
             setFullTextCache(saved.fullTextCache || {});
+            if (saved.reminderPrefs)
+                setReminderPrefs(saved.reminderPrefs);
+            if (saved.challengePrefs)
+                setChallengePrefs(saved.challengePrefs);
+            setChallengeLog(saved.challengeLog || {});
         }
         setHasLoaded(true);
+    }, []);
+    // If opened from a challenge notification tap (?open=challenges), jump straight there.
+    useEffect(() => {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get("open") === "challenges")
+                setPage("reminders");
+        }
+        catch (err) { /* ignore */ }
     }, []);
     // Autosave (debounced) whenever journal data changes, after the initial load.
     useEffect(() => {
@@ -633,11 +832,11 @@ function QuranJournal() {
         if (saveTimer.current)
             clearTimeout(saveTimer.current);
         saveTimer.current = setTimeout(() => {
-            saveJournalState({ goals, tracker, favorites, notes, lastRead, dhikrCounts, fullTextCache });
+            saveJournalState({ goals, tracker, favorites, notes, lastRead, dhikrCounts, fullTextCache, reminderPrefs, challengePrefs, challengeLog });
             setSaveStatus("saved");
         }, 500);
         return () => clearTimeout(saveTimer.current);
-    }, [goals, tracker, favorites, notes, lastRead, dhikrCounts, fullTextCache, hasLoaded]);
+    }, [goals, tracker, favorites, notes, lastRead, dhikrCounts, fullTextCache, reminderPrefs, challengePrefs, challengeLog, hasLoaded]);
     const filtered = ALL_SURAHS.filter(s => {
         const q = search.toLowerCase();
         const matchSearch = s.name.toLowerCase().includes(q) || s.arabic.includes(q) || String(s.number).includes(q) || s.meaning.toLowerCase().includes(q);
@@ -663,6 +862,12 @@ function QuranJournal() {
         setDhikrCounts({});
         setFullTextCache({});
         setFullTextStatus({});
+        setReminderPrefs({ enabled: false, activeStartHour: 7, activeEndHour: 21, intervalHours: 3 });
+        setChallengePrefs({ mode: "off", hour: 9, weekday: 1 });
+        setChallengeLog({});
+        if (isPushSupported() && isPushBackendConfigured()) {
+            unsubscribeFromPush().catch(() => { });
+        }
         try {
             window.localStorage.removeItem(STORAGE_KEY);
         }
@@ -670,6 +875,167 @@ function QuranJournal() {
     };
     const streak = currentStreak(tracker);
     const todayKey = getDateKey(new Date());
+    const enableReminders = async () => {
+        setReminderStatus("working");
+        setReminderError("");
+        try {
+            if (!isPushBackendConfigured()) {
+                throw new Error("The reminder server hasn't been set up yet. See push-server/README.md, then edit the PUSH_SERVER_URL constant near the top of this file's script.");
+            }
+            if (!isPushSupported()) {
+                if (isIOS() && !isIOSStandalone()) {
+                    throw new Error("On iPhone, reminders only work after adding this app to your Home Screen. Tap Share, then \"Add to Home Screen\", then reopen it from there and try again.");
+                }
+                throw new Error("This browser doesn't support push notifications.");
+            }
+            const permission = await Notification.requestPermission();
+            if (permission !== "granted") {
+                throw new Error(permission === "denied"
+                    ? "Notification permission was denied. You can re-enable it from your browser or iOS Settings for this app."
+                    : "Notification permission wasn't granted.");
+            }
+            const nextPrefs = { ...reminderPrefs, enabled: true };
+            const subscription = await subscribeToPush();
+            await sendPrefsToServer(subscription, nextPrefs, challengePrefs);
+            setReminderPrefs(nextPrefs);
+            setReminderStatus("idle");
+        }
+        catch (err) {
+            setReminderError(err && err.message ? err.message : String(err));
+            setReminderStatus("error");
+        }
+    };
+    const disableReminders = async () => {
+        setReminderStatus("working");
+        setReminderError("");
+        const nextPrefs = { ...reminderPrefs, enabled: false };
+        try {
+            if (challengePrefs.mode === "off") {
+                // Nothing else is using this subscription — fully unsubscribe.
+                await unsubscribeFromPush();
+            }
+            else {
+                const reg = await navigator.serviceWorker.ready;
+                const subscription = await reg.pushManager.getSubscription();
+                if (subscription)
+                    await sendPrefsToServer(subscription, nextPrefs, challengePrefs);
+            }
+        }
+        catch (err) {
+            console.warn("Error while turning off reminders:", err);
+        }
+        setReminderPrefs(nextPrefs);
+        setReminderStatus("idle");
+    };
+    const updateReminderSchedule = async (patch) => {
+        const nextPrefs = { ...reminderPrefs, ...patch };
+        setReminderPrefs(nextPrefs);
+        if (!nextPrefs.enabled)
+            return;
+        // Already enabled — push the updated schedule to the server right away.
+        try {
+            const reg = await navigator.serviceWorker.ready;
+            const subscription = await reg.pushManager.getSubscription();
+            if (subscription)
+                await sendPrefsToServer(subscription, nextPrefs, challengePrefs);
+        }
+        catch (err) {
+            console.warn("Could not update reminder schedule on the server:", err);
+        }
+    };
+    const testReminder = async () => {
+        setTestPushStatus("sending");
+        try {
+            await sendTestPush();
+            setTestPushStatus("sent");
+            setTimeout(() => setTestPushStatus("idle"), 4000);
+        }
+        catch (err) {
+            setReminderError(err && err.message ? err.message : String(err));
+            setTestPushStatus("error");
+            setTimeout(() => setTestPushStatus("idle"), 4000);
+        }
+    };
+    // ---- Islamic Reminders & Challenges — a separate on/off + schedule from
+    // ---- the dhikr reminders above, sharing the same push subscription. ----
+    const setChallengeMode = async (mode) => {
+        setChallengeStatus("working");
+        setChallengeError("");
+        try {
+            if (mode === "off") {
+                const nextChallengePrefs = { ...challengePrefs, mode: "off" };
+                if (!reminderPrefs.enabled) {
+                    await unsubscribeFromPush();
+                }
+                else {
+                    const reg = await navigator.serviceWorker.ready;
+                    const subscription = await reg.pushManager.getSubscription();
+                    if (subscription)
+                        await sendPrefsToServer(subscription, reminderPrefs, nextChallengePrefs);
+                }
+                setChallengePrefs(nextChallengePrefs);
+                setChallengeStatus("idle");
+                return;
+            }
+            if (!isPushBackendConfigured()) {
+                throw new Error("The reminder server hasn't been set up yet. See push-server/README.md, then edit the PUSH_SERVER_URL constant near the top of this file's script.");
+            }
+            if (!isPushSupported()) {
+                if (isIOS() && !isIOSStandalone()) {
+                    throw new Error("On iPhone, this only works after adding this app to your Home Screen. Tap Share, then \"Add to Home Screen\", then reopen it from there and try again.");
+                }
+                throw new Error("This browser doesn't support push notifications.");
+            }
+            const permission = await Notification.requestPermission();
+            if (permission !== "granted") {
+                throw new Error(permission === "denied"
+                    ? "Notification permission was denied. You can re-enable it from your browser or iOS Settings for this app."
+                    : "Notification permission wasn't granted.");
+            }
+            const nextChallengePrefs = { ...challengePrefs, mode };
+            const subscription = await subscribeToPush();
+            await sendPrefsToServer(subscription, reminderPrefs, nextChallengePrefs);
+            setChallengePrefs(nextChallengePrefs);
+            setChallengeStatus("idle");
+        }
+        catch (err) {
+            setChallengeError(err && err.message ? err.message : String(err));
+            setChallengeStatus("error");
+        }
+    };
+    const updateChallengeSchedule = async (patch) => {
+        const nextChallengePrefs = { ...challengePrefs, ...patch };
+        setChallengePrefs(nextChallengePrefs);
+        if (nextChallengePrefs.mode === "off")
+            return;
+        try {
+            const reg = await navigator.serviceWorker.ready;
+            const subscription = await reg.pushManager.getSubscription();
+            if (subscription)
+                await sendPrefsToServer(subscription, reminderPrefs, nextChallengePrefs);
+        }
+        catch (err) {
+            console.warn("Could not update challenge schedule on the server:", err);
+        }
+    };
+    const testChallenge = async (kind) => {
+        setTestChallengeStatus("sending");
+        try {
+            await sendTestChallenge(kind);
+            setTestChallengeStatus("sent");
+            setTimeout(() => setTestChallengeStatus("idle"), 4000);
+        }
+        catch (err) {
+            setChallengeError(err && err.message ? err.message : String(err));
+            setTestChallengeStatus("error");
+            setTimeout(() => setTestChallengeStatus("idle"), 4000);
+        }
+    };
+    const markTodaysChallengeDone = () => {
+        setChallengeLog(prev => ({ ...prev, [getDateKey(new Date())]: true }));
+    };
+    const challengeStreak = currentStreak(challengeLog);
+    const challengeDoneToday = !!challengeLog[getDateKey(new Date())];
     const dhikrKey = (id) => `${todayKey}:${id}`;
     const getDhikrCount = (id) => dhikrCounts[dhikrKey(id)] || 0;
     const incrementDhikr = (id) => {
@@ -740,7 +1106,7 @@ function QuranJournal() {
             React.createElement("nav", { style: { background: COLORS.sand, borderBottom: `2px solid ${COLORS.dustyPink}`, padding: "0.8rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 12px rgba(212,175,55,0.10)" } },
                 React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.3rem", color: COLORS.deepTaupe, fontWeight: 600, letterSpacing: "0.02em", cursor: "pointer" }, onClick: () => setPage("cover") }, "\u2726 My Quran Journal"),
                 React.createElement("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" } },
-                    [["cover", "Cover"], ["intro", "Intro"], ["surahs", "Surahs"], ["dhikr", "Dhikr"], ["tracker", "Tracker"], ["favorites", "Favorites"], ["extras", "Extras"]].map(([pg, label]) => (React.createElement("button", { key: pg, onClick: () => { setPage(pg); setSelectedSurah(null); }, style: { background: page === pg ? COLORS.dustyPink : "transparent", color: page === pg ? "#fff" : COLORS.taupe, border: `1px solid ${COLORS.dustyPink}`, borderRadius: 20, padding: "0.3rem 0.9rem", fontSize: "0.75rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif", fontWeight: 500, transition: "all 0.2s" } }, label))),
+                    [["cover", "Cover"], ["intro", "Intro"], ["surahs", "Surahs"], ["dhikr", "Dhikr"], ["reminders", "Reminders"], ["tracker", "Tracker"], ["favorites", "Favorites"], ["extras", "Extras"]].map(([pg, label]) => (React.createElement("button", { key: pg, onClick: () => { setPage(pg); setSelectedSurah(null); }, style: { background: page === pg ? COLORS.dustyPink : "transparent", color: page === pg ? "#fff" : COLORS.taupe, border: `1px solid ${COLORS.dustyPink}`, borderRadius: 20, padding: "0.3rem 0.9rem", fontSize: "0.75rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif", fontWeight: 500, transition: "all 0.2s" } }, label))),
                     React.createElement("span", { "aria-live": "polite", style: { fontSize: "0.68rem", color: COLORS.taupe, opacity: 0.75, marginLeft: "0.3rem", minWidth: 70 } }, saveStatus === "saving" ? "Saving…" : hasLoaded ? "✓ Saved on this device" : ""))),
             React.createElement("main", { style: { maxWidth: 860, margin: "0 auto", padding: "1.5rem 1rem" } },
                 page === "cover" && (React.createElement("div", { style: { textAlign: "center", padding: "2rem 1rem" } },
@@ -1025,6 +1391,97 @@ function QuranJournal() {
                                 React.createElement("div", { style: { background: done ? COLORS.gold : COLORS.dustyPink, height: "100%", width: `${pct}%`, transition: "width 0.3s" } })),
                             count > 0 && (React.createElement("button", { onClick: () => resetDhikr(d.id), style: { marginTop: "0.5rem", background: "transparent", border: "none", color: COLORS.taupe, fontSize: "0.7rem", cursor: "pointer", textDecoration: "underline", padding: 0 } }, "reset today's count"))));
                     })))),
+                page === "reminders" && (React.createElement("div", null,
+                    React.createElement("div", { style: { textAlign: "center", marginBottom: "1.5rem" } },
+                        React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "2rem", color: COLORS.deepTaupe } }, "Reminders \uD83D\uDD14"),
+                        React.createElement("div", { style: { color: COLORS.taupe, fontSize: "0.82rem" } }, "Gentle nudges to return to your dhikr and Quran, throughout the day")),
+                    isIOS() && !isIOSStandalone() && (React.createElement("div", { style: { background: `${COLORS.gold}22`, border: `1px solid ${COLORS.gold}55`, borderRadius: 14, padding: "1rem 1.2rem", marginBottom: "1.2rem" } },
+                        React.createElement("div", { style: { fontSize: "0.85rem", color: COLORS.deepTaupe, fontWeight: 500, marginBottom: "0.3rem" } }, "\uD83D\uDCF1 One extra step on iPhone"),
+                        React.createElement("div", { style: { fontSize: "0.8rem", color: COLORS.taupe, lineHeight: 1.7 } }, "Apple only allows reminders for apps added to your Home Screen \u2014 not regular Safari tabs. Tap the Share button, choose \"Add to Home Screen\", then open the app from there and come back to this page."))),
+                    !isPushBackendConfigured() && (React.createElement("div", { style: { background: "#fee", border: "1px solid #f9c", borderRadius: 14, padding: "1rem 1.2rem", marginBottom: "1.2rem", fontSize: "0.8rem", color: "#a04" } }, "The reminder server hasn't been configured yet for this copy of the app. (See push-server/README.md, then set PUSH_SERVER_URL near the top of the app's script.)")),
+                    React.createElement("div", { style: { background: "#fff", borderRadius: 16, padding: "1.3rem 1.4rem", border: `1px solid ${COLORS.sand}`, marginBottom: "1.2rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" } },
+                        React.createElement("div", null,
+                            React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.15rem", color: COLORS.deepTaupe } }, "Daily reminders"),
+                            React.createElement("div", { style: { fontSize: "0.78rem", color: COLORS.taupe, marginTop: "0.2rem" } }, reminderPrefs.enabled ? `On — a nudge every ${reminderPrefs.intervalHours} hour${reminderPrefs.intervalHours === 1 ? "" : "s"}` : "Off")),
+                        React.createElement("button", { onClick: () => (reminderPrefs.enabled ? disableReminders() : enableReminders()), disabled: reminderStatus === "working", style: { background: reminderPrefs.enabled ? COLORS.dustyPink : COLORS.sand, color: reminderPrefs.enabled ? "#fff" : COLORS.deepTaupe, border: "none", borderRadius: 20, padding: "0.5rem 1.3rem", fontSize: "0.82rem", cursor: reminderStatus === "working" ? "default" : "pointer", fontFamily: "'Poppins', sans-serif", opacity: reminderStatus === "working" ? 0.6 : 1 } }, reminderStatus === "working" ? "Working…" : reminderPrefs.enabled ? "Turn off" : "Turn on")),
+                    reminderStatus === "error" && reminderError && (React.createElement("div", { style: { background: "#fee", border: "1px solid #f9c", borderRadius: 12, padding: "0.8rem 1rem", marginBottom: "1.2rem", fontSize: "0.78rem", color: "#a04" } }, reminderError)),
+                    React.createElement("div", { style: { background: "#fff", borderRadius: 16, padding: "1.3rem 1.4rem", border: `1px solid ${COLORS.sand}`, marginBottom: "1.2rem" } },
+                        React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.1rem", color: COLORS.deepTaupe, marginBottom: "1rem" } }, "\u2726 Your schedule"),
+                        React.createElement("div", { style: { display: "flex", gap: "1rem", flexWrap: "wrap", marginBottom: "0.6rem" } },
+                            React.createElement("div", { style: { flex: 1, minWidth: 130 } },
+                                React.createElement("div", { style: { fontSize: "0.75rem", color: COLORS.taupe, marginBottom: "0.3rem" } }, "Active from"),
+                                React.createElement("input", { type: "time", value: String(reminderPrefs.activeStartHour).padStart(2, "0") + ":00", onChange: e => updateReminderSchedule({ activeStartHour: parseInt(e.target.value.split(":")[0], 10) }), style: { width: "100%", border: `1px solid ${COLORS.dustyPink}55`, borderRadius: 10, padding: "0.5rem 0.7rem", fontFamily: "'Poppins', sans-serif", fontSize: "0.85rem", background: COLORS.ivory, color: COLORS.deepTaupe } })),
+                            React.createElement("div", { style: { flex: 1, minWidth: 130 } },
+                                React.createElement("div", { style: { fontSize: "0.75rem", color: COLORS.taupe, marginBottom: "0.3rem" } }, "Until"),
+                                React.createElement("input", { type: "time", value: String(reminderPrefs.activeEndHour).padStart(2, "0") + ":00", onChange: e => updateReminderSchedule({ activeEndHour: parseInt(e.target.value.split(":")[0], 10) }), style: { width: "100%", border: `1px solid ${COLORS.dustyPink}55`, borderRadius: 10, padding: "0.5rem 0.7rem", fontFamily: "'Poppins', sans-serif", fontSize: "0.85rem", background: COLORS.ivory, color: COLORS.deepTaupe } }))),
+                        React.createElement("div", { style: { fontSize: "0.72rem", color: COLORS.taupe, opacity: 0.8, marginBottom: "1.1rem" } }, "Outside this window is your quiet time \u2014 no reminders will be sent."),
+                        React.createElement("div", { style: { fontSize: "0.75rem", color: COLORS.taupe, marginBottom: "0.4rem" } }, "Remind me every"),
+                        React.createElement("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap" } }, [1, 2, 3, 4, 6].map(h => (React.createElement("button", { key: h, onClick: () => updateReminderSchedule({ intervalHours: h }), style: { background: reminderPrefs.intervalHours === h ? COLORS.dustyPink : "transparent", color: reminderPrefs.intervalHours === h ? "#fff" : COLORS.taupe, border: `1px solid ${COLORS.dustyPink}`, borderRadius: 16, padding: "0.4rem 0.9rem", fontSize: "0.78rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } },
+                            h,
+                            " hour",
+                            h === 1 ? "" : "s",
+                            h === 3 ? " ✦" : ""))))),
+                    reminderPrefs.enabled && (React.createElement("div", { style: { textAlign: "center", marginBottom: "1.2rem" } },
+                        React.createElement("button", { onClick: testReminder, disabled: testPushStatus === "sending", style: { background: "transparent", border: `1px solid ${COLORS.gold}`, color: COLORS.deepTaupe, borderRadius: 20, padding: "0.5rem 1.2rem", fontSize: "0.8rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, testPushStatus === "sending" ? "Sending…" : testPushStatus === "sent" ? "Sent! Check your notifications ✓" : testPushStatus === "error" ? "Couldn't send — see message above" : "Send me a test reminder"))),
+                    React.createElement("div", { style: { background: `linear-gradient(135deg, ${COLORS.sand}, ${COLORS.lightPink})`, borderRadius: 16, padding: "1.3rem 1.4rem", marginBottom: "1.2rem", border: `1px solid ${COLORS.dustyPink}` } },
+                        React.createElement("div", { style: { fontSize: "0.72rem", color: COLORS.gold, letterSpacing: "0.1em", marginBottom: "0.6rem" } }, "\u2726 YOU MIGHT SEE THINGS LIKE \u2726"),
+                        [
+                            "🤍 Time for your dhikr",
+                            "📖 Have you read some Qur'an today?",
+                            "✨ Take a moment for your daily adhkar",
+                            "🤲 Don't forget your evening adhkar",
+                        ].map((m, i) => (React.createElement("div", { key: i, style: { fontSize: "0.82rem", color: COLORS.deepTaupe, padding: "0.35rem 0" } }, m))),
+                        React.createElement("div", { style: { fontSize: "0.7rem", color: COLORS.taupe, marginTop: "0.5rem" } }, "Messages rotate randomly, so it's not the exact same one every time.")),
+                    React.createElement("div", { style: { background: "#fff", borderRadius: 16, padding: "1.3rem 1.4rem", border: `1px solid ${COLORS.sand}`, marginBottom: "1.5rem" } },
+                        React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.05rem", color: COLORS.deepTaupe, marginBottom: "0.7rem" } }, "Good to know"),
+                        React.createElement("div", { style: { fontSize: "0.78rem", color: COLORS.taupe, lineHeight: 1.8 } },
+                            React.createElement("div", { style: { marginBottom: "0.5rem" } },
+                                React.createElement("b", null, "\uD83D\uDCF1 iPhone:"),
+                                " reminders only work once this app is added to your Home Screen (iOS 16.4+). Regular Safari tabs can't receive background notifications at all \u2014 that's an Apple restriction, not a bug here. Delivery timing isn't exact; iOS may delay a reminder by a few minutes depending on battery settings and Low Power Mode."),
+                            React.createElement("div", null,
+                                React.createElement("b", null, "\uD83E\uDD16 Android:"),
+                                " works in Chrome and most Chromium-based browsers, whether or not you've added it to your Home Screen, and reliably arrives even if the app's been fully closed."))),
+                    React.createElement("div", { className: "star-divider" }, "\u2726 \u2726 \u2726"),
+                    React.createElement("div", { style: { textAlign: "center", margin: "1.5rem 0" } },
+                        React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.7rem", color: COLORS.deepTaupe } }, "\uD83C\uDF19 Islamic Reminders & Challenges"),
+                        React.createElement("div", { style: { color: COLORS.taupe, fontSize: "0.8rem", marginTop: "0.3rem" } }, "Occasional, meaningful nudges \u2014 completely separate from the dhikr reminders above, so you're never overwhelmed.")),
+                    React.createElement("div", { style: { background: "#fff", borderRadius: 16, padding: "1.3rem 1.4rem", border: `1px solid ${COLORS.sand}`, marginBottom: "1.2rem" } },
+                        React.createElement("div", { style: { fontSize: "0.75rem", color: COLORS.taupe, marginBottom: "0.6rem" } }, "Send me"),
+                        React.createElement("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1.1rem" } }, [["off", "Neither"], ["daily", "Daily"], ["weekly", "Weekly"], ["both", "Both"]].map(([m, label]) => (React.createElement("button", { key: m, onClick: () => setChallengeMode(m), disabled: challengeStatus === "working", style: { background: challengePrefs.mode === m ? COLORS.dustyPink : "transparent", color: challengePrefs.mode === m ? "#fff" : COLORS.taupe, border: `1px solid ${COLORS.dustyPink}`, borderRadius: 16, padding: "0.45rem 1rem", fontSize: "0.8rem", cursor: challengeStatus === "working" ? "default" : "pointer", fontFamily: "'Poppins', sans-serif", opacity: challengeStatus === "working" ? 0.6 : 1 } }, label)))),
+                        challengePrefs.mode !== "off" && (React.createElement(React.Fragment, null,
+                            React.createElement("div", { style: { display: "flex", gap: "1rem", flexWrap: "wrap", marginBottom: (challengePrefs.mode === "weekly" || challengePrefs.mode === "both") ? "1rem" : 0 } },
+                                React.createElement("div", { style: { flex: 1, minWidth: 150 } },
+                                    React.createElement("div", { style: { fontSize: "0.75rem", color: COLORS.taupe, marginBottom: "0.3rem" } }, "Preferred time"),
+                                    React.createElement("input", { type: "time", value: String(challengePrefs.hour).padStart(2, "0") + ":00", onChange: e => updateChallengeSchedule({ hour: parseInt(e.target.value.split(":")[0], 10) }), style: { width: "100%", border: `1px solid ${COLORS.dustyPink}55`, borderRadius: 10, padding: "0.5rem 0.7rem", fontFamily: "'Poppins', sans-serif", fontSize: "0.85rem", background: COLORS.ivory, color: COLORS.deepTaupe } }))),
+                            (challengePrefs.mode === "weekly" || challengePrefs.mode === "both") && (React.createElement("div", null,
+                                React.createElement("div", { style: { fontSize: "0.75rem", color: COLORS.taupe, marginBottom: "0.4rem" } }, "Weekly challenge arrives on"),
+                                React.createElement("div", { style: { display: "flex", gap: "0.4rem", flexWrap: "wrap" } }, WEEKDAY_NAMES.map((name, i) => (React.createElement("button", { key: i, onClick: () => updateChallengeSchedule({ weekday: i }), style: { background: challengePrefs.weekday === i ? COLORS.dustyPink : "transparent", color: challengePrefs.weekday === i ? "#fff" : COLORS.taupe, border: `1px solid ${COLORS.dustyPink}`, borderRadius: 14, padding: "0.35rem 0.7rem", fontSize: "0.72rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, name.slice(0, 3)))))))))),
+                    challengeStatus === "error" && challengeError && (React.createElement("div", { style: { background: "#fee", border: "1px solid #f9c", borderRadius: 12, padding: "0.8rem 1rem", marginBottom: "1.2rem", fontSize: "0.78rem", color: "#a04" } }, challengeError)),
+                    challengePrefs.mode !== "off" && (React.createElement("div", { style: { textAlign: "center", marginBottom: "1.2rem", display: "flex", gap: "0.6rem", justifyContent: "center", flexWrap: "wrap" } },
+                        (challengePrefs.mode === "daily" || challengePrefs.mode === "both") && (React.createElement("button", { onClick: () => testChallenge("daily"), disabled: testChallengeStatus === "sending", style: { background: "transparent", border: `1px solid ${COLORS.gold}`, color: COLORS.deepTaupe, borderRadius: 20, padding: "0.5rem 1.1rem", fontSize: "0.78rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, testChallengeStatus === "sending" ? "Sending…" : testChallengeStatus === "sent" ? "Sent ✓" : "Test daily challenge")),
+                        (challengePrefs.mode === "weekly" || challengePrefs.mode === "both") && (React.createElement("button", { onClick: () => testChallenge("weekly"), disabled: testChallengeStatus === "sending", style: { background: "transparent", border: `1px solid ${COLORS.gold}`, color: COLORS.deepTaupe, borderRadius: 20, padding: "0.5rem 1.1rem", fontSize: "0.78rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, testChallengeStatus === "sending" ? "Sending…" : testChallengeStatus === "sent" ? "Sent ✓" : "Test weekly challenge")))),
+                    React.createElement("div", { style: { background: `linear-gradient(135deg, ${COLORS.gold}22, ${COLORS.dustyPink}22)`, borderRadius: 16, padding: "1.4rem", marginBottom: "1.2rem", border: `1px solid ${COLORS.gold}55`, textAlign: "center" } },
+                        React.createElement("div", { style: { fontSize: "0.68rem", color: COLORS.gold, letterSpacing: "0.12em", marginBottom: "0.5rem" } }, "\u2726 TODAY'S CHALLENGE \u2726"),
+                        React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.25rem", color: COLORS.deepTaupe, marginBottom: "0.3rem" } }, todaysChallenge().title),
+                        React.createElement("div", { style: { fontSize: "0.82rem", color: COLORS.taupe, marginBottom: "1rem" } }, todaysChallenge().body),
+                        React.createElement("button", { onClick: markTodaysChallengeDone, disabled: challengeDoneToday, style: { background: challengeDoneToday ? COLORS.sand : COLORS.dustyPink, color: challengeDoneToday ? COLORS.deepTaupe : "#fff", border: "none", borderRadius: 20, padding: "0.5rem 1.3rem", fontSize: "0.8rem", cursor: challengeDoneToday ? "default" : "pointer", fontFamily: "'Poppins', sans-serif" } }, challengeDoneToday ? "Alhamdulillah! Completed today ✓" : "Mark as done"),
+                        challengeStreak > 0 && (React.createElement("div", { style: { marginTop: "0.7rem", fontSize: "0.8rem", color: COLORS.deepTaupe } },
+                            "\uD83D\uDD25 ",
+                            challengeStreak,
+                            "-day streak"))),
+                    React.createElement("div", { style: { background: `linear-gradient(135deg, ${COLORS.sand}, ${COLORS.lightPink})`, borderRadius: 16, padding: "1.4rem", marginBottom: "1.2rem", border: `1px solid ${COLORS.dustyPink}`, textAlign: "center" } },
+                        React.createElement("div", { style: { fontSize: "0.68rem", color: COLORS.gold, letterSpacing: "0.12em", marginBottom: "0.5rem" } }, "\uD83C\uDF38 THIS WEEK'S CHALLENGE \uD83C\uDF38"),
+                        React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.15rem", color: COLORS.deepTaupe, marginBottom: "0.3rem" } }, thisWeeksChallenge().title),
+                        React.createElement("div", { style: { fontSize: "0.82rem", color: COLORS.taupe } }, thisWeeksChallenge().body)),
+                    React.createElement("div", { style: { background: "#fff", borderRadius: 16, padding: "1.3rem 1.4rem", border: `1px solid ${COLORS.sand}` } },
+                        React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.05rem", color: COLORS.deepTaupe, marginBottom: "0.7rem" } }, "A few examples of what you might get"),
+                        React.createElement("div", { style: { fontSize: "0.78rem", color: COLORS.taupe, lineHeight: 2 } },
+                            React.createElement("div", null, "\uD83E\uDD0D \"Have you made your morning adhkar today?\""),
+                            React.createElement("div", null, "\uD83D\uDCD6 \"Take 5 minutes to read Qur'an.\""),
+                            React.createElement("div", null, "\uD83E\uDD32 \"Pause for a moment and make istighfar.\""),
+                            React.createElement("div", null, "\uD83C\uDF31 \"Do one good deed secretly today.\""),
+                            React.createElement("div", null, "\uD83E\uDDE0 \"What is one blessing Allah gave you today?\"")),
+                        React.createElement("div", { style: { fontSize: "0.72rem", color: COLORS.taupe, opacity: 0.8, marginTop: "0.8rem" } }, "This content is meant as gentle encouragement, not religious rulings. If a prompt touches on a fiqh question you're unsure about, please check with a knowledgeable local scholar.")))),
                 page === "tracker" && (React.createElement("div", null,
                     React.createElement("div", { style: { textAlign: "center", marginBottom: "1.5rem" } },
                         React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "2rem", color: COLORS.deepTaupe } }, "My Quran Tracker"),

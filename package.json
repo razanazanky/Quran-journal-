@@ -1,0 +1,19 @@
+{
+  "name": "quran-journal-push-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Push-notification backend for the Quran Journal PWA. Stores subscriptions + reminder preferences in Workers KV, and sends a rotating reminder every N hours during each user's chosen active hours via a Cron Trigger.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "generate-vapid": "npx @pushforge/builder vapid",
+    "tail": "wrangler tail"
+  },
+  "dependencies": {
+    "@pushforge/builder": "^1.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0"
+  }
+}

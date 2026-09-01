@@ -1,5 +1,10 @@
 # Quran Journal — PWA setup notes
 
+> **Looking for the reminders/notifications feature?** See
+> `README-REMINDERS-SETUP.md` — that covers the push-notification backend and
+> the new Reminders page. This document only covers the base "installable app"
+> setup (manifest, icons, offline support).
+
 ## What was changed
 
 Your app's design, content, layout, and all Quran-journal features (surahs, tafsir,
