@@ -1,0 +1,22 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F5E6DC"/>
+      <stop offset="55%" stop-color="#EADBC8"/>
+      <stop offset="100%" stop-color="#D8B4A0"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#E7C766"/>
+      <stop offset="100%" stop-color="#C89A2E"/>
+    </linearGradient>
+    <mask id="crescentMask">
+      <rect width="512" height="512" fill="white"/>
+      <circle cx="292" cy="216" r="118" fill="black"/>
+    </mask>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="238" cy="256" r="132" fill="url(#gold)" mask="url(#crescentMask)"/>
+  <polygon points="
+      372,150 383,178 413,182 391,203 397,233 372,217 347,233 353,203 331,182 361,178
+    " fill="url(#gold)"/>
+</svg>
