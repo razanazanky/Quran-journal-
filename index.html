@@ -113,10 +113,8 @@ function getDateKey(d) {
 }
 // ===== Reminder push notifications =====
 //
-// TODO: after deploying the Worker in push-server/ (see push-server/README.md),
-// replace this with your actual Worker URL, e.g.
-// "https://quran-journal-push.yourname.workers.dev" (no trailing slash).
-const PUSH_SERVER_URL = "https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev";
+// Reminder backend deployed 2026-09-01.
+const PUSH_SERVER_URL = "https://quran-journal-push.razanquranjournal.workers.dev";
 function isPushBackendConfigured() {
     return typeof PUSH_SERVER_URL === "string" && PUSH_SERVER_URL.indexOf("YOUR-WORKER-NAME") === -1;
 }
