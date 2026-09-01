@@ -113,10 +113,8 @@ function getDateKey(d) {
 }
 // ===== Reminder push notifications =====
 //
-// TODO: after deploying the Worker in push-server/ (see push-server/README.md),
-// replace this with your actual Worker URL, e.g.
-// "https://quran-journal-push.yourname.workers.dev" (no trailing slash).
-const PUSH_SERVER_URL = "https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev";
+// Reminder backend deployed 2026-09-01.
+const PUSH_SERVER_URL = "https://quran-journal-push.razanquranjournal.workers.dev";
 function isPushBackendConfigured() {
     return typeof PUSH_SERVER_URL === "string" && PUSH_SERVER_URL.indexOf("YOUR-WORKER-NAME") === -1;
 }
@@ -347,7 +345,7 @@ const globalStyles = `
     transform-origin: left center;
   }
   @supports (height: 100dvh) {
-    .book-page { max-height: 70dvh !important; }
+    .book-page { height: 100%; }
   }
   @keyframes pinGlow {
     0%, 100% { box-shadow: 0 6px 18px rgba(107,91,78,0.35); }
@@ -357,6 +355,8 @@ const globalStyles = `
      a continuously-moving element can make real touch taps miss or get cancelled. */
   .pin-book-btn { animation: pinGlow 3s ease-in-out infinite; }
   .pin-book-btn:active { animation: none; }
+  .nav-scroll { scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; }
+  .nav-scroll::-webkit-scrollbar { display: none; }
 `;
 const SURAHS = [
     { number: 1, arabic: "الفاتحة", name: "Al-Fatiha", meaning: "The Opening", type: "Makki", ayahs: 7, themes: ["Praise of Allah", "Guidance", "The straight path", "Master of Judgment Day"], summary: "Al-Fatiha is the opening chapter of the Quran — the most recited prayer in Islam, said in every unit of salah. It is a perfect conversation between you and Allah, where you praise Him, acknowledge His sovereignty, and beg Him to guide you to the straight path.", tafsir: "Often called 'Umm Al-Quran' (Mother of the Quran), Al-Fatiha encapsulates the entire message of Islam. The first three verses declare Allah's absolute perfection, mercy, and ownership of the Day of Judgment. The second half is our personal plea — acknowledging that only Allah deserves worship and only from Him we seek help. The final verses are a dua to be guided like the prophets and righteous, not like those who earned wrath or went astray.", favoriteAyah: { arabic: "إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ", english: "You alone we worship, and You alone we ask for help.", explanation: "This verse is the heart of Al-Fatiha — a direct declaration of tawheed and complete reliance on Allah. It reminds us that no matter how hard life gets, our help comes only from Him." }, dua: "O Allah, guide me to the straight path — the path of those You have blessed, not of those who have gone astray. Keep my heart firm on Your deen and make every step of my life a step closer to You. Ameen." },
@@ -535,7 +535,7 @@ const ISLAMIC_QUOTES = [
     { arabic: "إِنَّ اللَّهَ مَعَ الصَّابِرِينَ", english: "Indeed, Allah is with those who are patient.", source: "Surah Al-Baqarah, 2:153" },
 ];
 // ---- Daily Dhikr (remembrance) ----
-const DHIKR_CATEGORIES = ["Morning", "Evening", "Anytime"];
+const DHIKR_CATEGORIES = ["Morning", "Evening", "Night", "Anytime"];
 const DHIKR_LIST = [
     { id: "subhanallah", category: "Anytime", arabic: "سُبْحَانَ اللَّهِ", transliteration: "SubhanAllah", meaning: "Glory be to Allah", target: 33 },
     { id: "alhamdulillah", category: "Anytime", arabic: "الْحَمْدُ لِلَّهِ", transliteration: "Alhamdulillah", meaning: "All praise is due to Allah", target: 33 },
@@ -543,14 +543,27 @@ const DHIKR_LIST = [
     { id: "lailahaillallah", category: "Anytime", arabic: "لَا إِلَٰهَ إِلَّا اللَّهُ", transliteration: "La ilaha illallah", meaning: "There is no god but Allah", target: 100 },
     { id: "astaghfirullah", category: "Anytime", arabic: "أَسْتَغْفِرُ اللَّهَ", transliteration: "Astaghfirullah", meaning: "I seek forgiveness from Allah", target: 100 },
     { id: "salawat", category: "Anytime", arabic: "اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ", transliteration: "Allahumma salli ala Muhammad", meaning: "O Allah, send blessings upon Muhammad", target: 10 },
+    { id: "morning-waking", category: "Morning", arabic: "الْحَمْدُ لِلَّهِ الَّذِي أَحْيَانَا بَعْدَ مَا أَمَاتَنَا وَإِلَيْهِ النُّشُورُ", transliteration: "Alhamdu lillahil-ladhi ahyana ba'da ma amatana wa ilayhin-nushur", meaning: "All praise is for Allah who gave us life after having taken it from us, and unto Him is the resurrection. (Said upon waking up.)", target: 1 },
     { id: "morning-1", category: "Morning", arabic: "أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ", transliteration: "Asbahna wa asbahal-mulku lillah", meaning: "We have entered the morning, and with it all dominion belongs to Allah.", target: 1 },
     { id: "morning-2", category: "Morning", arabic: "اللَّهُمَّ بِكَ أَصْبَحْنَا وَبِكَ أَمْسَيْنَا", transliteration: "Allahumma bika asbahna wa bika amsayna", meaning: "O Allah, by You we enter the morning and by You we enter the evening, by You we live and by You we die, and to You is the resurrection.", target: 1 },
+    { id: "morning-radhitu", category: "Morning", arabic: "رَضِيتُ بِاللَّهِ رَبًّا وَبِالْإِسْلَامِ دِينًا وَبِمُحَمَّدٍ صَلَّى اللَّهُ عَلَيْهِ وَسَلَّمَ نَبِيًّا", transliteration: "Radhitu billahi rabban, wa bil-Islami dinan, wa bi-Muhammadin nabiyyan", meaning: "I am pleased with Allah as a Lord, Islam as a religion, and Muhammad ﷺ as a Prophet.", target: 3 },
     { id: "morning-3", category: "Morning", arabic: "آيَةُ الْكُرْسِيّ", transliteration: "Ayat al-Kursi (2:255)", meaning: "The Throne Verse — recited for protection through the day.", target: 1 },
     { id: "morning-4", category: "Morning", arabic: "حَسْبِيَ اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ", transliteration: "Hasbiyallahu la ilaha illa huwa", meaning: "Allah is sufficient for me; there is no god but Him. On Him I rely.", target: 7 },
+    { id: "morning-tahlil", category: "Morning", arabic: "لَا إِلَٰهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ", transliteration: "La ilaha illallahu wahdahu la sharika lah...", meaning: "There is no god but Allah alone, without partner. His is the dominion and His is the praise, and He is over all things capable.", target: 10 },
+    { id: "morning-tasbih100", category: "Morning", arabic: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ", transliteration: "SubhanAllahi wa bihamdihi", meaning: "Glory be to Allah and praise Him. (Whoever says this 100 times, their sins are forgiven even if like the foam of the sea.)", target: 100 },
+    { id: "morning-quls", category: "Morning", arabic: "قُلْ هُوَ اللَّهُ أَحَدٌ ۝ قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ ۝ قُلْ أَعُوذُ بِرَبِّ النَّاسِ", transliteration: "The three Quls: Al-Ikhlas, Al-Falaq, An-Nas", meaning: "Recite all three short surahs of refuge and sincerity for protection through the day.", target: 3 },
     { id: "evening-1", category: "Evening", arabic: "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ", transliteration: "Amsayna wa amsal-mulku lillah", meaning: "We have entered the evening, and with it all dominion belongs to Allah.", target: 1 },
     { id: "evening-2", category: "Evening", arabic: "اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَٰهَ إِلَّا أَنْتَ", transliteration: "Allahumma anta Rabbi la ilaha illa Anta (Sayyid al-Istighfar)", meaning: "O Allah, You are my Lord, there is no god but You. The master supplication for seeking forgiveness.", target: 1 },
     { id: "evening-3", category: "Evening", arabic: "بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ", transliteration: "Bismillahil-ladhi la yadurru ma'asmihi shay'un", meaning: "In the name of Allah, with whose name nothing on earth or in the heavens can cause harm.", target: 3 },
-    { id: "evening-4", category: "Evening", arabic: "سُورَتَا الْفَلَقِ وَالنَّاسِ", transliteration: "Surahs Al-Falaq and An-Nas", meaning: "The two surahs of refuge — recited morning and evening for protection.", target: 3 },
+    { id: "evening-audhu", category: "Evening", arabic: "أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ", transliteration: "A'udhu bikalimatillahi at-tammati min sharri ma khalaq", meaning: "I seek refuge in the perfect words of Allah from the evil of what He has created.", target: 3 },
+    { id: "evening-tahlil", category: "Evening", arabic: "لَا إِلَٰهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ", transliteration: "La ilaha illallahu wahdahu la sharika lah...", meaning: "There is no god but Allah alone, without partner. His is the dominion and His is the praise, and He is over all things capable.", target: 10 },
+    { id: "evening-tasbih100", category: "Evening", arabic: "سُبْحَانَ اللَّهِ وَبِحَمْدِهِ", transliteration: "SubhanAllahi wa bihamdihi", meaning: "Glory be to Allah and praise Him. (Whoever says this 100 times, their sins are forgiven even if like the foam of the sea.)", target: 100 },
+    { id: "evening-4", category: "Evening", arabic: "قُلْ هُوَ اللَّهُ أَحَدٌ ۝ قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ ۝ قُلْ أَعُوذُ بِرَبِّ النَّاسِ", transliteration: "The three Quls: Al-Ikhlas, Al-Falaq, An-Nas", meaning: "Recite all three short surahs of refuge and sincerity, morning and evening, for protection.", target: 3 },
+    { id: "night-name", category: "Night", arabic: "بِاسْمِكَ اللَّهُمَّ أَمُوتُ وَأَحْيَا", transliteration: "Bismika Allahumma amutu wa ahya", meaning: "In Your name, O Allah, I die and I live. (Said upon lying down to sleep.)", target: 1 },
+    { id: "night-qini", category: "Night", arabic: "اللَّهُمَّ قِنِي عَذَابَكَ يَوْمَ تَبْعَثُ عِبَادَكَ", transliteration: "Allahumma qini adhabaka yawma tab'athu ibadak", meaning: "O Allah, protect me from Your punishment on the day You resurrect Your servants.", target: 3 },
+    { id: "night-kursi", category: "Night", arabic: "آيَةُ الْكُرْسِيّ", transliteration: "Ayat al-Kursi (2:255), before sleep", meaning: "Whoever recites this before sleeping will have a protector from Allah, and no devil will come near until morning.", target: 1 },
+    { id: "night-quls", category: "Night", arabic: "قُلْ هُوَ اللَّهُ أَحَدٌ ۝ قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ ۝ قُلْ أَعُوذُ بِرَبِّ النَّاسِ", transliteration: "The three Quls, blown into the hands and wiped over the body", meaning: "Recite Al-Ikhlas, Al-Falaq, and An-Nas, blow gently into your cupped hands, then wipe them over as much of your body as you can reach. Repeat three times before sleeping.", target: 3 },
+    { id: "night-tasbih", category: "Night", arabic: "سُبْحَانَ اللَّهِ (٣٣) الْحَمْدُ لِلَّهِ (٣٣) اللَّهُ أَكْبَرُ (٣٤)", transliteration: "Tasbih Fatimah: SubhanAllah x33, Alhamdulillah x33, Allahu Akbar x34", meaning: "The Prophet ﷺ taught this to Fatimah (may Allah be pleased with her) as a source of strength before sleep — better than a servant to help with housework.", target: 1 },
 ];
 // ---- Pinned Quran flip-book ----
 // A small curated set of short surahs to page through like a physical mushaf.
@@ -559,8 +572,18 @@ const DHIKR_LIST = [
 // everything else is fetched live and accurately from the Al Quran Cloud API
 // (api.alquran.cloud — free, no key, Uthmani script + Sahih International translation)
 // the first time you open that page, then cached in this browser for next time.
-const BOOK_SURAH_NUMBERS = Array.from({ length: 114 }, (_, i) => i + 1);
-const BOOK_PAGES = [{ isCover: true }, ...BOOK_SURAH_NUMBERS.map(n => ({ surahNumber: n }))];
+const AYAHS_PER_BOOK_PAGE = 10;
+const BOOK_PAGES = [
+    { isCover: true },
+    ...ALL_SURAHS.flatMap(s => {
+        const totalPages = Math.max(1, Math.ceil(s.ayahs / AYAHS_PER_BOOK_PAGE));
+        return Array.from({ length: totalPages }, (_, i) => ({
+            surahNumber: s.number,
+            pageIndex: i,
+            totalPages,
+        }));
+    }),
+];
 async function fetchFullSurahOnline(number) {
     const controller = new AbortController();
     const timeoutMs = 12000;
@@ -1046,6 +1069,11 @@ function QuranJournal() {
     };
     const todaysDhikrTotal = Object.keys(dhikrCounts).filter(k => k.startsWith(todayKey + ":")).reduce((sum, k) => sum + dhikrCounts[k], 0);
     const openBook = () => { setBookPageIdx(0); setBookOpen(true); };
+    const openBookAtSurah = (num) => {
+        const idx = BOOK_PAGES.findIndex(p => !p.isCover && p.surahNumber === num);
+        setBookPageIdx(idx === -1 ? 0 : idx);
+        setBookOpen(true);
+    };
     const turnBookPage = (delta) => {
         setBookPageIdx(idx => Math.max(0, Math.min(BOOK_PAGES.length - 1, idx + delta)));
         setBookFlipping(f => !f); // toggles the key parity so the CSS flip animation replays
@@ -1103,11 +1131,11 @@ function QuranJournal() {
     return (React.createElement(React.Fragment, null,
         React.createElement("style", null, globalStyles),
         React.createElement("div", { style: { minHeight: "100vh", background: COLORS.ivory, fontFamily: "'Poppins', sans-serif" } },
-            React.createElement("nav", { style: { background: COLORS.sand, borderBottom: `2px solid ${COLORS.dustyPink}`, padding: "0.8rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 12px rgba(212,175,55,0.10)" } },
-                React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.3rem", color: COLORS.deepTaupe, fontWeight: 600, letterSpacing: "0.02em", cursor: "pointer" }, onClick: () => setPage("cover") }, "\u2726 My Quran Journal"),
-                React.createElement("div", { style: { display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" } },
-                    [["cover", "Cover"], ["intro", "Intro"], ["surahs", "Surahs"], ["dhikr", "Dhikr"], ["reminders", "Reminders"], ["tracker", "Tracker"], ["favorites", "Favorites"], ["extras", "Extras"]].map(([pg, label]) => (React.createElement("button", { key: pg, onClick: () => { setPage(pg); setSelectedSurah(null); }, style: { background: page === pg ? COLORS.dustyPink : "transparent", color: page === pg ? "#fff" : COLORS.taupe, border: `1px solid ${COLORS.dustyPink}`, borderRadius: 20, padding: "0.3rem 0.9rem", fontSize: "0.75rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif", fontWeight: 500, transition: "all 0.2s" } }, label))),
-                    React.createElement("span", { "aria-live": "polite", style: { fontSize: "0.68rem", color: COLORS.taupe, opacity: 0.75, marginLeft: "0.3rem", minWidth: 70 } }, saveStatus === "saving" ? "Saving…" : hasLoaded ? "✓ Saved on this device" : ""))),
+            React.createElement("nav", { style: { background: COLORS.sand, borderBottom: `2px solid ${COLORS.dustyPink}`, padding: "0.7rem 1rem 0.6rem", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 12px rgba(212,175,55,0.10)" } },
+                React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" } },
+                    React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.15rem", color: COLORS.deepTaupe, fontWeight: 600, letterSpacing: "0.02em", cursor: "pointer" }, onClick: () => setPage("cover") }, "\u2726 My Quran Journal"),
+                    React.createElement("span", { "aria-live": "polite", style: { fontSize: "0.65rem", color: COLORS.taupe, opacity: 0.75, flexShrink: 0, marginLeft: "0.5rem", textAlign: "right" } }, saveStatus === "saving" ? "Saving…" : hasLoaded ? "✓ Saved" : "")),
+                React.createElement("div", { className: "nav-scroll", style: { display: "flex", gap: "0.45rem", alignItems: "center", overflowX: "auto", paddingBottom: "0.15rem" } }, [["cover", "Cover"], ["intro", "Intro"], ["surahs", "Surahs"], ["dhikr", "Dhikr"], ["reminders", "Reminders"], ["tracker", "Tracker"], ["favorites", "Favorites"], ["extras", "Extras"]].map(([pg, label]) => (React.createElement("button", { key: pg, onClick: () => { setPage(pg); setSelectedSurah(null); }, style: { background: page === pg ? COLORS.dustyPink : "transparent", color: page === pg ? "#fff" : COLORS.taupe, border: `1px solid ${COLORS.dustyPink}`, borderRadius: 20, padding: "0.3rem 0.9rem", fontSize: "0.75rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif", fontWeight: 500, transition: "all 0.2s", flexShrink: 0, whiteSpace: "nowrap" } }, label))))),
             React.createElement("main", { style: { maxWidth: 860, margin: "0 auto", padding: "1.5rem 1rem" } },
                 page === "cover" && (React.createElement("div", { style: { textAlign: "center", padding: "2rem 1rem" } },
                     React.createElement("div", { style: { background: `linear-gradient(145deg, ${COLORS.sand}, ${COLORS.lightPink})`, borderRadius: 24, padding: "3rem 2rem", border: `2px solid ${COLORS.dustyPink}`, position: "relative", overflow: "hidden", boxShadow: "0 8px 32px rgba(212,175,55,0.12)" } },
@@ -1216,7 +1244,8 @@ function QuranJournal() {
                         React.createElement("div", { className: "gold-divider" }),
                         React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: "0.4rem" } }, selectedSurah.themes.map(t => (React.createElement("button", { key: t, onClick: () => setThemeModal(t), style: { fontSize: "0.7rem", background: "rgba(255,248,240,0.8)", color: COLORS.deepTaupe, borderRadius: 10, padding: "0.2rem 0.6rem", border: `1px solid ${COLORS.dustyPink}44`, cursor: "pointer", fontFamily: "'Poppins', sans-serif" } },
                             t,
-                            " \uD83D\uDD0D"))))),
+                            " \uD83D\uDD0D")))),
+                        React.createElement("button", { onClick: () => openBookAtSurah(selectedSurah.number), "aria-label": "Read full Surah in the Quran book", style: { marginTop: "0.9rem", width: "100%", background: `linear-gradient(135deg, ${COLORS.gold}, ${COLORS.dustyPink})`, border: "none", borderRadius: 16, padding: "0.6rem", fontSize: "0.85rem", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem", boxShadow: "0 3px 10px rgba(212,175,55,0.4)", fontFamily: "'Poppins', sans-serif", fontWeight: 500 } }, "\uD83D\uDCD6 Read Full Surah")),
                     React.createElement("div", { style: { display: "flex", gap: "0.4rem", marginBottom: "1rem", flexWrap: "wrap" } }, [["overview", "📖 Overview"], ["tafsir", "✨ Tafsir"], ["reflect", "💭 Reflect"], ["dua", "🤲 Dua"], ["journal", "🌸 Journal Extras"], ["notes", "📝 Notes"]].map(([tab, label]) => (React.createElement("button", { key: tab, onClick: () => setActiveTab(tab), style: { background: activeTab === tab ? COLORS.dustyPink : "#fff", color: activeTab === tab ? "#fff" : COLORS.taupe, border: `1px solid ${COLORS.dustyPink}`, borderRadius: 20, padding: "0.45rem 1rem", fontSize: "0.78rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, label)))),
                     activeTab === "overview" && (React.createElement("div", null,
                         React.createElement("div", { style: { background: "#fff", borderRadius: 16, padding: "1.4rem", border: `1px solid ${COLORS.sand}`, marginBottom: "1rem" } },
@@ -1370,7 +1399,7 @@ function QuranJournal() {
                         React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.8rem", color: COLORS.deepTaupe } }, todaysDhikrTotal),
                         React.createElement("div", { style: { fontSize: "0.75rem", color: COLORS.taupe } }, "dhikr said today \u2726 resets each new day")),
                     React.createElement("div", { style: { display: "flex", gap: "0.5rem", justifyContent: "center", marginBottom: "1.3rem", flexWrap: "wrap" } }, DHIKR_CATEGORIES.map(cat => (React.createElement("button", { key: cat, onClick: () => setDhikrCategory(cat), style: { background: dhikrCategory === cat ? COLORS.dustyPink : "transparent", color: dhikrCategory === cat ? "#fff" : COLORS.taupe, border: `1px solid ${COLORS.dustyPink}`, borderRadius: 20, padding: "0.45rem 1.1rem", fontSize: "0.8rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } },
-                        cat === "Morning" ? "🌅 " : cat === "Evening" ? "🌙 " : "✦ ",
+                        cat === "Morning" ? "🌅 " : cat === "Evening" ? "🌇 " : cat === "Night" ? "🌙 " : "✦ ",
                         cat)))),
                     React.createElement("div", { style: { display: "grid", gap: "0.9rem" } }, DHIKR_LIST.filter(d => d.category === dhikrCategory).map(d => {
                         const count = getDhikrCount(d.id);
@@ -1577,9 +1606,9 @@ function QuranJournal() {
             bookOpen && (() => {
                 const p = BOOK_PAGES[bookPageIdx];
                 const s = p.isCover ? null : ALL_SURAHS.find(x => x.number === p.surahNumber);
-                return (React.createElement("div", { onClick: () => setBookOpen(false), style: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(60,48,38,0.6)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", overflowY: "auto" } },
-                    React.createElement("div", { onClick: e => e.stopPropagation(), style: { position: "relative", width: "100%", maxWidth: 520, margin: "2.5rem 0" } },
-                        React.createElement("button", { onClick: () => setBookOpen(false), "aria-label": "Close book", style: { position: "absolute", top: -44, right: 0, background: "rgba(255,255,255,0.15)", border: `1px solid ${COLORS.ivory}55`, color: "#fff", borderRadius: "50%", width: 34, height: 34, fontSize: "1.1rem", cursor: "pointer" } }, "\u2715"),
+                return (React.createElement("div", { onClick: () => setBookOpen(false), style: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(60,48,38,0.6)", zIndex: 1000, display: "flex", alignItems: "stretch", justifyContent: "stretch", padding: 0, overflowY: "auto" } },
+                    React.createElement("div", { onClick: e => e.stopPropagation(), style: { position: "relative", width: "100%", height: "100dvh", margin: 0 } },
+                        React.createElement("button", { onClick: () => setBookOpen(false), "aria-label": "Close book", style: { position: "absolute", top: 14, right: 14, zIndex: 10, background: "rgba(107,91,78,0.85)", border: `1px solid ${COLORS.ivory}55`, color: "#fff", borderRadius: "50%", width: 38, height: 38, fontSize: "1.2rem", cursor: "pointer" } }, "\u2715"),
                         React.createElement("div", { key: bookPageIdx + "-" + bookFlipping, className: "book-page", onTouchStart: e => { bookTouchStartX.current = e.touches[0].clientX; }, onTouchEnd: e => {
                                 if (bookTouchStartX.current == null)
                                     return;
@@ -1591,20 +1620,19 @@ function QuranJournal() {
                                     turnBookPage(-1);
                             }, style: {
                                 background: `linear-gradient(120deg, ${COLORS.ivory}, ${COLORS.lightPink} 90%)`,
-                                borderRadius: "6px 16px 16px 6px",
-                                padding: "2rem 1.8rem",
-                                minHeight: 380,
-                                maxHeight: "75vh",
-                                boxShadow: "inset 8px 0 16px -12px rgba(107,91,78,0.5), 0 20px 50px rgba(0,0,0,0.35)",
-                                border: `1px solid ${COLORS.dustyPink}`,
-                                borderLeft: `6px solid ${COLORS.dustyPink}`,
+                                borderRadius: 0,
+                                padding: "3.5rem 2rem 1.5rem",
+                                width: "100%",
+                                height: "100%",
+                                boxShadow: "inset 8px 0 16px -12px rgba(107,91,78,0.5)",
                                 position: "relative",
                                 display: "flex",
-                                flexDirection: "column"
+                                flexDirection: "column",
+                                boxSizing: "border-box"
                             } },
                             React.createElement("div", { style: { position: "absolute", top: 14, left: 18, fontSize: "0.7rem", color: COLORS.gold, letterSpacing: "0.1em" } },
                                 "\u2726 ",
-                                p.isCover ? "COVER" : `PAGE ${bookPageIdx} of ${BOOK_PAGES.length - 1}`),
+                                p.isCover ? "COVER" : `${s.name} — Page ${p.pageIndex + 1} of ${p.totalPages}`),
                             !p.isCover && s && (React.createElement("button", { onClick: () => toggleFavorite(s.number), "aria-label": favorites.includes(s.number) ? "Unpin favorite" : "Pin as favorite", style: { position: "absolute", top: 10, right: 14, background: "transparent", border: "none", fontSize: "1.2rem", cursor: "pointer" } }, favorites.includes(s.number) ? "💛" : "🤍")),
                             React.createElement("div", { style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: p.isCover ? "center" : "flex-start", textAlign: "center", marginTop: "1.2rem", overflowY: "auto" } }, p.isCover ? (React.createElement(React.Fragment, null,
                                 React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "2.2rem", color: COLORS.gold, marginBottom: "0.5rem" } }, "\u0628\u0650\u0633\u0652\u0645\u0650 \u0627\u0644\u0644\u064E\u0651\u0647\u0650 \u0627\u0644\u0631\u064E\u0651\u062D\u0652\u0645\u064E\u0670\u0646\u0650 \u0627\u0644\u0631\u064E\u0651\u062D\u0650\u064A\u0645\u0650"),
@@ -1626,11 +1654,13 @@ function QuranJournal() {
                                     const text = FULL_SURAH_TEXT[s.number] || fullTextCache[s.number];
                                     const status = fullTextStatus[s.number];
                                     if (text) {
-                                        return text.map((ayah, i) => (React.createElement("div", { key: i, style: { margin: "0.9rem 0", width: "100%" } },
+                                        const start = p.pageIndex * AYAHS_PER_BOOK_PAGE;
+                                        const pageAyahs = text.slice(start, start + AYAHS_PER_BOOK_PAGE);
+                                        return pageAyahs.map((ayah, i) => (React.createElement("div", { key: start + i, style: { margin: "0.9rem 0", width: "100%" } },
                                             React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "1.35rem", color: COLORS.deepTaupe, lineHeight: 2 } },
                                                 ayah.arabic,
                                                 " ",
-                                                React.createElement("span", { style: { fontFamily: "'Poppins', sans-serif", fontSize: "0.65rem", color: COLORS.gold, border: `1px solid ${COLORS.gold}66`, borderRadius: "50%", padding: "0.1rem 0.4rem" } }, i + 1)),
+                                                React.createElement("span", { style: { fontFamily: "'Poppins', sans-serif", fontSize: "0.65rem", color: COLORS.gold, border: `1px solid ${COLORS.gold}66`, borderRadius: "50%", padding: "0.1rem 0.4rem" } }, start + i + 1)),
                                             React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "0.92rem", color: COLORS.taupe, marginTop: "0.25rem" } }, ayah.english))));
                                     }
                                     if (status === "loading") {
