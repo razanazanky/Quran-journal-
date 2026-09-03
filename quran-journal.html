@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Quran Journey</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Poppins:wght@300;400;500&family=Amiri:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --pink:#D8B4A0;--sand:#EADBC8;--ivory:#FFF8F0;--taupe:#9C8B7A;
+  --gold:#D4AF37;--gpale:#FAF3D0;--white:#FFFCF8;
+  --ink:#4A3728;--soft:#7A6050;--faint:#B09880;--rose:#C09080;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--ivory);color:var(--ink);font-family:Poppins,sans-serif;font-weight:300;font-size:14px;line-height:1.7}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--sand)}
+::-webkit-scrollbar-thumb{background:var(--pink);border-radius:3px}
+
+/* SIDEBAR */
+#sidebar{position:fixed;left:0;top:0;bottom:0;width:224px;background:var(--white);border-right:1px solid var(--sand);z-index:100;display:flex;flex-direction:column;padding:20px 13px;overflow-y:auto;transition:transform .3s}
+.sb-logo{font-family:"Cormorant Garamond",serif;font-size:14px;color:var(--rose);letter-spacing:2px;text-align:center;margin-bottom:3px}
+.sb-tag{font-size:8px;color:var(--faint);letter-spacing:2px;text-transform:uppercase;text-align:center;margin-bottom:16px}
+.sb-div{height:1px;background:linear-gradient(to right,transparent,var(--sand),transparent);margin-bottom:14px}
+.sb-slbl{font-size:8px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);margin-bottom:5px;padding-left:4px}
+.sb-link{display:block;padding:7px 12px;font-family:"Cormorant Garamond",serif;font-size:13px;color:var(--soft);border-radius:8px;margin-bottom:2px;cursor:pointer;transition:all .2s;user-select:none}
+.sb-link:hover,.sb-link.active{background:var(--sand);color:var(--rose)}
+.sb-sec{margin-bottom:14px}
+.sb-progress{margin-top:auto;padding-top:14px;border-top:1px solid var(--sand)}
+.sb-prog-lbl{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+.sb-prog-bar{height:4px;background:var(--sand);border-radius:2px;overflow:hidden}
+.sb-prog-fill{height:100%;background:linear-gradient(to right,var(--pink),var(--gold));border-radius:2px;transition:width .4s ease;width:0%}
+.sb-prog-txt{font-size:9px;color:var(--faint);margin-top:4px}
+
+/* MAIN */
+#main{margin-left:224px;min-height:100vh}
+.page{display:none;padding:46px 56px 80px;max-width:880px;animation:fu .35s ease}
+.page.active{display:block}
+@keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* PAGE NAV BUTTONS */
+.page-nav{display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:28px;border-top:1px solid var(--sand);gap:12px}
+.nav-btn{font-family:"Cormorant Garamond",serif;font-size:15px;padding:12px 28px;border-radius:30px;border:1px solid var(--sand);background:var(--white);color:var(--soft);cursor:pointer;transition:all .25s;letter-spacing:.5px}
+.nav-btn:hover{background:var(--sand);color:var(--rose);transform:translateY(-1px);box-shadow:0 4px 16px rgba(200,150,130,.15)}
+.nav-next{background:var(--rose);color:var(--white);border-color:var(--rose)}
+.nav-next:hover{background:var(--ink);border-color:var(--ink);color:var(--white)}
+.nav-prev:hover{background:var(--sand);color:var(--rose)}
+
+/* COVER */
+#page-cover{display:block}
+#cover-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:60px 40px;background:linear-gradient(150deg,var(--ivory) 0%,var(--sand) 55%,var(--gpale) 100%);position:relative;overflow:hidden}
+.cvd{position:absolute;opacity:.06;font-size:200px;user-select:none;pointer-events:none}
+.cvtl{top:-20px;left:-20px;transform:rotate(-12deg)}
+.cvbr{bottom:-30px;right:-20px;transform:rotate(18deg);font-size:240px}
+.cv-orn{font-family:"Cormorant Garamond",serif;font-size:12px;letter-spacing:8px;color:var(--gold);margin-bottom:16px;opacity:.8;animation:fu 1s .1s both}
+.cv-bism{font-family:Amiri,serif;font-size:30px;color:var(--rose);margin-bottom:13px;line-height:1.6;animation:fu 1s .25s both}
+.cv-h1{font-family:"Cormorant Garamond",serif;font-size:54px;font-weight:300;color:var(--ink);line-height:1.05;margin-bottom:8px;animation:fu 1s .4s both}
+.cv-h1 em{font-style:italic;color:var(--rose)}
+.cv-sub{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--taupe);margin-bottom:32px;animation:fu 1s .55s both}
+.cv-frame{border:1px solid var(--sand);background:rgba(255,255,255,.5);border-radius:16px;padding:22px 28px;max-width:400px;margin-bottom:30px;animation:fu 1s .7s both}
+.cv-qar{font-family:Amiri,serif;font-size:19px;color:var(--ink);margin-bottom:7px}
+.cv-qen{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:15px;color:var(--soft)}
+.cv-qref{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--faint);margin-top:5px}
+.cv-flds{display:flex;gap:28px;margin-bottom:28px;animation:fu 1s .85s both}
+.cv-fld label{display:block;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--taupe);margin-bottom:4px}
+.cv-fld input{border:none;border-bottom:1px solid var(--pink);background:transparent;font-family:"Cormorant Garamond",serif;font-size:15px;color:var(--ink);width:150px;padding:3px 0;outline:none}
+.cv-fld input::placeholder{color:var(--faint)}
+.cv-btn{background:var(--rose);color:var(--white);border:none;padding:14px 40px;border-radius:30px;font-family:"Cormorant Garamond",serif;font-size:16px;letter-spacing:2px;cursor:pointer;transition:all .3s;animation:fu 1s 1s both}
+.cv-btn:hover{background:var(--ink);transform:translateY(-2px);box-shadow:0 8px 22px rgba(74,55,40,.2)}
+
+/* TYPOGRAPHY */
+.chip{display:inline-block;font-size:8.5px;letter-spacing:2.5px;text-transform:uppercase;color:var(--rose);background:var(--sand);padding:5px 13px;border-radius:20px;margin-bottom:13px}
+.ph1{font-family:"Cormorant Garamond",serif;font-size:44px;font-weight:300;color:var(--ink);line-height:1.1;margin-bottom:10px}
+.ph1 em{font-style:italic;color:var(--rose)}
+.lead{font-family:"Cormorant Garamond",serif;font-size:17px;font-style:italic;color:var(--soft)}
+.gdiv{display:flex;align-items:center;gap:10px;color:var(--gold);font-size:11px;margin:20px 0}
+.gdiv::before,.gdiv::after{content:"";flex:1;height:1px;background:linear-gradient(to right,transparent,var(--sand))}
+.gdiv::after{background:linear-gradient(to left,transparent,var(--sand))}
+
+/* CARDS */
+.card{background:var(--white);border:1px solid var(--sand);border-radius:16px;padding:26px 30px;margin-bottom:18px;box-shadow:0 2px 12px rgba(200,160,130,.05);transition:box-shadow .25s}
+.card:hover{box-shadow:0 4px 20px rgba(200,160,130,.1)}
+.ca{border-left:3px solid var(--gold)}.cp{border-left:3px solid var(--pink)}
+.clbl{font-size:8px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);margin-bottom:5px}
+.cttl{font-family:"Cormorant Garamond",serif;font-size:23px;color:var(--ink);margin-bottom:11px}
+.cbody{font-size:13.5px;color:var(--soft);line-height:1.9}.cbody p{margin-bottom:9px}
+
+/* SURAH HERO */
+.sh-hero{background:linear-gradient(135deg,var(--sand),var(--gpale));border-radius:20px;padding:36px;text-align:center;margin-bottom:28px;border:1px solid rgba(212,175,55,.2);position:relative}
+.sh-hero::before,.sh-hero::after{content:"\2736";position:absolute;color:var(--gold);opacity:.3;font-size:12px}
+.sh-hero::before{top:14px;right:18px}.sh-hero::after{bottom:14px;left:18px}
+.sh-n{font-size:8px;letter-spacing:3px;text-transform:uppercase;color:var(--taupe);margin-bottom:7px}
+.sh-ar{font-family:Amiri,serif;font-size:44px;color:var(--ink);margin-bottom:5px;line-height:1.3}
+.sh-en{font-family:"Cormorant Garamond",serif;font-size:28px;font-style:italic;color:var(--rose);margin-bottom:5px}
+.sh-mn{font-family:"Cormorant Garamond",serif;font-size:15px;color:var(--taupe);margin-bottom:16px}
+.pills{display:flex;gap:9px;justify-content:center;flex-wrap:wrap}
+.pill{background:rgba(255,255,255,.7);border:1px solid var(--sand);border-radius:20px;padding:4px 13px;font-size:11px;color:var(--soft)}
+.pill span{color:var(--rose)}
+.twrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;justify-content:center}
+.tchip{background:var(--sand);color:var(--rose);border-radius:20px;padding:4px 12px;font-size:10.5px}
+
+/* AYAH */
+.ay-card{background:linear-gradient(135deg,var(--gpale),rgba(255,255,255,.9));border:1px solid rgba(212,175,55,.22);border-radius:16px;padding:30px;text-align:center;margin-bottom:18px}
+.ay-ar{font-family:Amiri,serif;font-size:25px;color:var(--ink);direction:rtl;line-height:1.9;margin-bottom:13px}
+.ay-ln{width:46px;height:1px;background:var(--sand);margin:12px auto}
+.ay-en{font-family:"Cormorant Garamond",serif;font-size:17px;font-style:italic;color:var(--rose);line-height:1.5;margin-bottom:9px}
+.ay-ref{font-size:8.5px;letter-spacing:2px;text-transform:uppercase;color:var(--faint)}
+.ay-why{font-size:13px;color:var(--soft);margin-top:13px;padding-top:13px;border-top:1px dashed var(--sand)}
+
+/* DUA */
+.dua-card{background:var(--white);border:1px solid var(--sand);border-radius:16px;padding:26px;text-align:center;margin-bottom:18px}
+.dua-op{font-family:Amiri,serif;font-size:19px;color:var(--gold);margin-bottom:11px}
+.dua-txt{font-family:"Cormorant Garamond",serif;font-size:16px;font-style:italic;color:var(--soft);line-height:1.7}
+
+/* REFLECTION */
+.refl-list{list-style:none}
+.refl-list li{display:flex;align-items:flex-start;gap:11px;padding:12px 0;border-bottom:1px solid var(--sand);font-family:"Cormorant Garamond",serif;font-size:16px;font-style:italic;color:var(--soft)}
+.refl-list li:last-child{border-bottom:none}
+.rdot{width:5px;height:5px;border-radius:50%;background:var(--pink);flex-shrink:0;margin-top:9px}
+
+/* NOTES */
+.notes-a{width:100%;min-height:110px;border:none;background:repeating-linear-gradient(transparent,transparent 30px,var(--sand) 30px,var(--sand) 31px);font-family:"Cormorant Garamond",serif;font-size:15px;color:var(--ink);line-height:31px;padding:2px 4px;resize:none;outline:none;margin-top:9px}
+.notes-a::placeholder{color:var(--faint);font-style:italic}
+
+/* QUOTE BANNER */
+.qbanner{background:var(--rose);color:var(--white);border-radius:14px;padding:24px 28px;margin:26px 0;text-align:center}
+.qbanner p{font-family:"Cormorant Garamond",serif;font-size:19px;font-style:italic;line-height:1.5;margin-bottom:5px}
+.qbanner small{font-size:8.5px;letter-spacing:2px;text-transform:uppercase;opacity:.75}
+
+/* TRACKERS */
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(34px,1fr));gap:5px;margin-top:13px}
+.tday{aspect-ratio:1;border:1px solid var(--sand);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--faint);cursor:pointer;transition:all .2s;background:var(--white)}
+.tday:hover{background:var(--sand)}.tday.done{background:#D8EAD0;border-color:#9CBF8C;color:#4A7A3A}
+.sgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:12px}
+.sbox{padding:5px 2px;border:1px solid var(--sand);border-radius:7px;text-align:center;font-size:8.5px;color:var(--soft);cursor:pointer;transition:all .2s;background:var(--white)}
+.sbox:hover{background:var(--sand)}.sbox.read{background:#D8EAD0;border-color:#9CBF8C;color:#4A7A3A}
+.sbox.mem{background:var(--gpale);border-color:var(--gold);color:var(--taupe)}
+.sboxn{font-size:7.5px;color:var(--faint);display:block}
+
+/* SURAH LIST */
+.sli{display:flex;align-items:center;gap:13px;padding:11px 14px;border-radius:10px;cursor:pointer;transition:all .2s;border:1px solid transparent;margin-bottom:3px}
+.sli:hover{background:var(--sand);border-color:rgba(216,180,160,.35)}
+.sli-n{font-family:"Cormorant Garamond",serif;font-size:17px;color:var(--pink);width:26px;text-align:center;flex-shrink:0}
+.sli-ar{font-family:Amiri,serif;font-size:19px;color:var(--ink);direction:rtl;text-align:right;flex:1}
+.sli-inf{flex:2}.sli-nm{font-family:"Cormorant Garamond",serif;font-size:15px;color:var(--ink)}
+.sli-mt{font-size:10px;color:var(--faint)}
+.sli-tg{font-size:8.5px;padding:3px 9px;border-radius:10px;flex-shrink:0}
+.tgm{background:#D8EAD0;color:#4A7A3A}.tgmd{background:var(--gpale);color:var(--taupe)}
+
+/* SURAH DETAIL NAV */
+.surah-nav{display:flex;justify-content:space-between;align-items:center;margin-top:32px;gap:10px}
+.surah-nav-btn{font-family:"Cormorant Garamond",serif;font-size:14px;padding:10px 22px;border-radius:30px;border:1px solid var(--sand);background:var(--white);color:var(--soft);cursor:pointer;transition:all .25s}
+.surah-nav-btn:hover{background:var(--sand);color:var(--rose)}
+.surah-nav-next{background:var(--rose);color:var(--white);border-color:var(--rose)}
+.surah-nav-next:hover{background:var(--ink);border-color:var(--ink)}
+.back-b{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--rose);cursor:pointer;padding:7px 14px;border-radius:20px;border:1px solid var(--sand);background:var(--white);transition:all .2s;margin-bottom:22px}
+.back-b:hover{background:var(--sand)}
+
+/* HEALING */
+.heal-item{display:flex;gap:16px;padding:16px;background:var(--white);border-radius:12px;border:1px solid var(--sand);margin-bottom:11px}
+.heal-n{font-family:"Cormorant Garamond",serif;font-size:24px;color:var(--sand);font-style:italic;flex-shrink:0;width:26px;text-align:center;padding-top:3px}
+.heal-ar{font-family:Amiri,serif;font-size:15px;direction:rtl;color:var(--rose);margin-bottom:3px}
+.heal-en{font-family:"Cormorant Garamond",serif;font-size:14px;font-style:italic;color:var(--soft)}
+.heal-ref{font-size:9.5px;color:var(--faint);margin-top:2px}
+
+/* COLLECTION */
+.coll-c{background:var(--white);border:1px solid var(--sand);border-radius:12px;padding:18px;margin-bottom:11px}
+.coll-ar{font-family:Amiri,serif;font-size:19px;direction:rtl;color:var(--ink);margin-bottom:4px}
+.coll-en{font-family:"Cormorant Garamond",serif;font-size:15px;font-style:italic;color:var(--rose)}
+.coll-ref{font-size:9.5px;color:var(--faint);margin-top:3px;letter-spacing:1px}
+
+/* GRATITUDE */
+.gr-row{display:flex;gap:9px;align-items:center;padding:13px 0;border-bottom:1px dashed var(--sand)}
+.gr-row:last-child{border:none}.gr-ico{font-size:15px;flex-shrink:0}
+.gr-in{flex:1;border:none;border-bottom:1px solid var(--sand);background:transparent;font-family:"Cormorant Garamond",serif;font-size:14px;color:var(--ink);padding:3px 0;outline:none}
+.gr-in::placeholder{color:var(--faint);font-style:italic}
+
+/* RAMADAN */
+.ram-c{border:1px solid var(--sand);border-radius:11px;padding:17px;background:var(--white);margin-bottom:10px}
+.ram-t{font-family:"Cormorant Garamond",serif;font-size:15px;color:var(--rose);margin-bottom:9px}
+.ram-g{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.ram-f label{font-size:7.5px;letter-spacing:2px;text-transform:uppercase;color:var(--taupe);display:block;margin-bottom:3px}
+.ram-f input{width:100%;border:none;border-bottom:1px solid var(--sand);background:transparent;font-family:"Cormorant Garamond",serif;font-size:13px;color:var(--ink);padding:3px 0;outline:none}
+
+/* FOOTER */
+.pfoot{margin-top:20px;text-align:center;font-size:8.5px;letter-spacing:2px;color:var(--faint);text-transform:uppercase}
+
+/* MOBILE */
+#mob-btn{display:none;position:fixed;top:13px;left:13px;z-index:200;background:var(--rose);border:none;border-radius:8px;width:36px;height:36px;cursor:pointer;color:var(--white);font-size:15px;align-items:center;justify-content:center}
+@media(max-width:768px){
+  #sidebar{transform:translateX(-100%)}
+  #sidebar.open{transform:translateX(0)}
+  #main{margin-left:0}
+  #mob-btn{display:flex}
+  .page{padding:56px 20px 60px}
+  .cv-h1{font-size:36px}
+  .sgrid{grid-template-columns:repeat(5,1fr)}
+  .ram-g{grid-template-columns:1fr}
+  .page-nav{flex-direction:column}
+  .nav-btn{width:100%;text-align:center}
+}
+</style>
+</head>
+<body>
+<button id="mob-btn" onclick="toggleSB()">&#9776;</button>
+<nav id="sidebar">
+  <div class="sb-logo">&#10022; My Quran Journey &#10022;</div>
+  <div class="sb-tag">An Aesthetic Journal</div>
+  <div class="sb-div"></div>
+  <div class="sb-sec">
+    <div class="sb-slbl">&#10022; Journal</div>
+    <span class="sb-link active" onclick="showP('cover')">&#127769; Cover Page</span>
+    <span class="sb-link" onclick="showP('intro')">&#128140; Introduction</span>
+    <span class="sb-link" onclick="showP('surahs')">&#128214; All 114 Surahs</span>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-slbl">&#10022; Trackers</div>
+    <span class="sb-link" onclick="showP('habit')">&#128197; Daily Habit</span>
+    <span class="sb-link" onclick="showP('goals')">&#127919; My Goals</span>
+    <span class="sb-link" onclick="showP('memorise')">&#11088; Memorisation</span>
+  </div>
+  <div class="sb-sec">
+    <div class="sb-slbl">&#10022; Collections</div>
+    <span class="sb-link" onclick="showP('collection')">&#128155; Favourite Ayahs</span>
+    <span class="sb-link" onclick="showP('duas')">&#129330; Dua List</span>
+    <span class="sb-link" onclick="showP('healing')">&#127800; Verses That Heal</span>
+    <span class="sb-link" onclick="showP('gratitude')">&#10024; Gratitude</span>
+    <span class="sb-link" onclick="showP('ramadan')">&#127769; Ramadan</span>
+  </div>
+  <div class="sb-progress">
+    <div class="sb-prog-lbl">Your Journey</div>
+    <div class="sb-prog-bar"><div class="sb-prog-fill" id="prog-fill"></div></div>
+    <div class="sb-prog-txt" id="prog-txt">0 of 11 pages visited</div>
+  </div>
+</nav>
+<div id="main">
+
+<!-- COVER -->
+<div id="page-cover">
+<div id="cover-wrap">
+  <div class="cvd cvtl">&#127800;</div>
+  <div class="cvd cvbr">&#127807;</div>
+  <div class="cv-orn">&#10022; &nbsp; &#10022; &nbsp; &#10022;</div>
+  <div class="cv-bism">&#1576;&#1616;&#1587;&#1618;&#1605;&#1616; &#1575;&#1604;&#1604;&#1617;&#1607;&#1616; &#1575;&#1604;&#1585;&#1617;&#1614;&#1581;&#1618;&#1605;&#1614;&#1600;&#1606;&#1616; &#1575;&#1604;&#1585;&#1617;&#1614;&#1581;&#1616;&#1610;&#1605;&#1616;</div>
+  <h1 class="cv-h1">My <em>Quran</em><br>Journey</h1>
+  <p class="cv-sub">Healing Through the Words of Allah</p>
+  <div class="cv-frame">
+    <div class="cv-qar">&#1573;&#1606;&#1617;&#1614; &#1607;&#1614;&#1648;&#1584;&#1614;&#1575; &#1575;&#1604;&#1618;&#1602;&#1615;&#1585;&#1618;&#1570;&#1606;&#1614; &#1610;&#1614;&#1607;&#1618;&#1583;&#1616;&#1610; &#1604;&#1616;&#1604;&#1617;&#1614;&#1578;&#1616;&#1610; &#1607;&#1616;&#1610;&#1614; &#1571;&#1614;&#1602;&#1618;&#1608;&#1614;&#1605;&#1615;</div>
+    <div class="cv-qen">&ldquo;Indeed, this Quran guides to that which is most suitable.&rdquo;</div>
+    <div class="cv-qref">Surah Al-Isra &middot; 17:9</div>
+  </div>
+  <div class="cv-flds">
+    <div class="cv-fld"><label>Name</label><input type="text" placeholder="Your name&hellip;"></div>
+    <div class="cv-fld"><label>Started</label><input type="text" placeholder="Date&hellip;"></div>
+  </div>
+  <button class="cv-btn" onclick="showP('intro')">Begin My Journey &rarr;</button>
+</div>
+</div>
+
+<!-- INTRO -->
+<div id="page-intro" class="page">
+  <div class="chip">&#128140; Introduction</div>
+  <h1 class="ph1">A Letter to <em>My Heart</em></h1>
+  <div class="gdiv">&#10022;</div>
+  <p class="lead" style="margin-bottom:20px">Dear heart, you picked up this journal for a reason.</p>
+  <div class="card ca">
+    <div class="clbl">Why This Journal</div>
+    <div class="cbody"><p>Perhaps you are searching for peace, clarity, or a stronger connection with Allah. Whatever brought you here &mdash; know this is a blessed beginning. This is your sacred space to slow down, to listen, and to let the words of Allah pour into your soul.</p><p>The Quran is not just a book to be read &mdash; it is a conversation between you and your Creator. Every page you journal brings you closer.</p></div>
+  </div>
+  <div class="card cp">
+    <div class="clbl">Building Connection</div>
+    <div class="cbody"><p>The goal is not to rush through pages. It is to sit with each Surah, to wonder, to reflect. Even five minutes of deep reading is more powerful than an hour of hurrying. Begin every session with a sincere intention.</p></div>
+  </div>
+  <div class="card ca">
+    <div class="clbl">Understanding Deeply</div>
+    <div class="cbody"><p>Each Surah carries a universe of wisdom. Explore the meaning, the context, and timeless lessons that speak directly to your life today. You do not need to be a scholar &mdash; you just need an open heart.</p></div>
+  </div>
+  <div class="qbanner"><p>&ldquo;And We send down of the Quran that which is healing and mercy for the believers.&rdquo;</p><small>Surah Al-Isra &middot; 17:82</small></div>
+  <div class="card">
+    <div class="clbl">A Daily Intention</div>
+    <div class="cttl">Begin With Niyyah &#129330;</div>
+    <div class="dua-txt" style="text-align:left">&ldquo;O Allah, open my heart to understand Your words, let them be a light on my path, and bring me closer to You with every page. Ameen.&rdquo;</div>
+  </div>
+  <div class="page-nav"><button class="nav-btn nav-prev" onclick="showP('cover')">&#8592; 🌙 Cover</button><button class="nav-btn nav-next" onclick="showP('surahs')">📖 All 114 Surahs &#8594;</button></div>
+</div>
+
+<!-- SURAHS -->
+<div id="page-surahs" class="page">
+  <div id="surah-list-v">
+    <div class="chip">&#128214; The Quran</div>
+    <h1 class="ph1">All <em>114 Surahs</em></h1>
+    <p style="color:var(--faint);font-size:11px;margin-bottom:5px">Tap any Surah to open its full journal entry</p>
+    <div class="gdiv">&#10022;</div>
+    <div id="surah-list-con"></div>
+    <div class="page-nav"><button class="nav-btn nav-prev" onclick="showP('intro')">&#8592; 💌 Introduction</button><button class="nav-btn nav-next" onclick="showP('habit')">📅 Daily Habit &#8594;</button></div>
+  </div>
+  <div id="surah-detail-v" style="display:none">
+    <span class="back-b" onclick="backToList()">&larr; All Surahs</span>
+    <div id="surah-detail-con"></div>
+  </div>
+</div>
+
+<!-- HABIT -->
+<div id="page-habit" class="page">
+  <div class="chip">&#128197; Tracker</div>
+  <h1 class="ph1">Daily <em>Quran Habit</em></h1>
+  <div class="gdiv">&#10022;</div>
+  <p style="color:var(--soft);margin-bottom:22px">Click a day to mark it done. Build your streak, one blessed day at a time.</p>
+  <div class="card ca"><div class="clbl">This Month</div><div class="cttl">30-Day Tracker</div><div class="tgrid" id="habit-grid"></div></div>
+  <div class="card">
+    <div class="clbl">My Commitments</div><div class="cttl">Reading Goals</div>
+    <div style="display:flex;flex-direction:column;gap:9px;margin-top:4px">
+      <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13px;color:var(--soft)"><input type="checkbox" style="accent-color:var(--rose)"> Read at least 1 page every day</label>
+      <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13px;color:var(--soft)"><input type="checkbox" style="accent-color:var(--rose)"> Complete the Quran this year</label>
+      <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13px;color:var(--soft)"><input type="checkbox" style="accent-color:var(--rose)"> Understand the meaning of every Surah</label>
+      <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13px;color:var(--soft)"><input type="checkbox" style="accent-color:var(--rose)"> Memorise 10 new Surahs</label>
+      <label style="display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13px;color:var(--soft)"><input type="checkbox" style="accent-color:var(--rose)"> Write a reflection for each Surah I read</label>
+    </div>
+  </div>
+  <div class="qbanner"><p>&ldquo;The best of you are those who learn the Quran and teach it.&rdquo;</p><small>Prophet Muhammad &mdash; Bukhari</small></div>
+  <div class="page-nav"><button class="nav-btn nav-prev" onclick="showP('surahs')">&#8592; 📖 All 114 Surahs</button><button class="nav-btn nav-next" onclick="showP('goals')">🎯 My Goals &#8594;</button></div>
+</div>
+
+<!-- GOALS -->
+<div id="page-goals" class="page">
+  <div class="chip">&#127919; Goals</div>
+  <h1 class="ph1">My Quran <em>Goals</em></h1>
+  <div class="gdiv">&#10022;</div>
+  <div class="card ca"><div class="clbl">Short-Term</div><div class="cttl">This Month</div><div style="display:flex;flex-direction:column;gap:9px;margin-top:5px" id="goals-st"></div></div>
+  <div class="card cp"><div class="clbl">Long-Term</div><div class="cttl">By End of Year</div><div style="display:flex;flex-direction:column;gap:9px;margin-top:5px" id="goals-lt"></div></div>
+  <div class="card"><div class="clbl">My Why</div><div class="cttl">Why I Am On This Journey</div><textarea class="notes-a" placeholder="Write your intention here&hellip;"></textarea></div>
+  <div class="page-nav"><button class="nav-btn nav-prev" onclick="showP('habit')">&#8592; 📅 Daily Habit</button><button class="nav-btn nav-next" onclick="showP('memorise')">⭐ Memorisation &#8594;</button></div>
+</div>
+
+<!-- MEMORISE -->
+<div id="page-memorise" class="page">
+  <div class="chip">&#11088; Memorisation</div>
+  <h1 class="ph1">Memorisation <em>Tracker</em></h1>
+  <div class="gdiv">&#10022;</div>
+  <p style="color:var(--faint);font-size:12px;margin-bottom:18px">Click once = read &nbsp;&middot;&nbsp; Click twice = memorised</p>
+  <div class="card ca">
+    <div class="clbl">All 114 Surahs</div><div class="cttl">Progress Overview</div>
+    <div class="sgrid" id="memo-grid"></div>
+    <div style="display:flex;gap:14px;margin-top:12px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--soft)"><div style="width:11px;height:11px;background:#D8EAD0;border:1px solid #9CBF8C;border-radius:3px"></div>Read</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--soft)"><div style="width:11px;height:11px;background:var(--gpale);border:1px solid var(--gold);border-radius:3px"></div>Memorised</div>
+    </div>
+  </div>
+  <div class="page-nav"><button class="nav-btn nav-prev" onclick="showP('goals')">&#8592; 🎯 My Goals</button><button class="nav-btn nav-next" onclick="showP('collection')">💛 Favourite Ayahs &#8594;</button></div>
+</div>
+
+<!-- COLLECTION -->
+<div id="page-collection" class="page">
+  <div class="chip">&#128155; Collection</div>
+  <h1 class="ph1">Favourite <em>Ayahs</em></h1>
+  <div class="gdiv">&#10022;</div>
+  <div class="coll-c"><div class="coll-ar">&#1601;&#1614;&#1573;&#1616;&#1606;&#1617;&#1614; &#1605;&#1614;&#1593;&#1614; &#1575;&#1604;&#1618;&#1593;&#1615;&#1587;&#1618;&#1585;&#1616; &#1610;&#1615;&#1587;&#1618;&#1585;&#1611;&#1575;</div><div class="coll-en">&ldquo;For indeed, with hardship will be ease.&rdquo;</div><div class="coll-ref">Surah Ash-Sharh &middot; 94:5</div></div>
+  <div class="coll-c"><div class="coll-ar">&#1571;&#1614;&#1604;&#1614;&#1575; &#1576;&#1616;&#1584;&#1616;&#1603;&#1618;&#1585;&#1616; &#1575;&#1604;&#1604;&#1617;&#1607;&#1616; &#1578;&#1614;&#1591;&#1618;&#1605;&#1614;&#1574;&#1616;&#1606;&#1617;&#1615; &#1575;&#1604;&#1618;&#1602;&#1615;&#1604;&#1615;&#1608;&#1576;&#1615;</div><div class="coll-en">&ldquo;Verily, in the remembrance of Allah do hearts find rest.&rdquo;</div><div class="coll-ref">Surah Ar-Ra&rsquo;d &middot; 13:28</div></div>
+  <div class="coll-c"><div class="coll-ar">&#1608;&#1614;&#1607;&#1615;&#1608;&#1614; &#1605;&#1614;&#1593;&#1614;&#1603;&#1615;&#1605;&#1618; &#1571;&#1614;&#1610;&#1618;&#1606;&#1614; &#1605;&#1614;&#1575; &#1603;&#1615;&#1606;&#1578;&#1615;&#1605;&#1618;</div><div class="coll-en">&ldquo;And He is with you wherever you are.&rdquo;</div><div class="coll-ref">Surah Al-Hadid &middot; 57:4</div></div>
+  <div class="coll-c"><div class="coll-ar">&#1608;&#1614;&#1604;&#1614;&#1575; &#1578;&#1614;&#1610;&#1618;&#1571;&#1614;&#1587;&#1615;&#1608;&#1575; &#1605;&#1616;&#1606; &#1585;&#1617;&#1614;&#1608;&#1618;&#1581;&#1616; &#1575;&#1604;&#1604;&#1617;&#1607;&#1616;</div><div class="coll-en">&ldquo;And do not despair of relief from Allah.&rdquo;</div><div class="coll-ref">Surah Yusuf &middot; 12:87</div></div>
+  <div class="coll-c"><div class="coll-ar">&#1573;&#1616;&#1606;&#1617;&#1614; &#1575;&#1604;&#1604;&#1617;&#1607;&#1614; &#1605;&#1614;&#1593;&#1614; &#1575;&#1604;&#1589;&#1617;&#1614;&#1575;&#1576;&#1616;&#1585;&#1616;&#1610;&#1606;&#1614;</div><div class="coll-en">&ldquo;Indeed, Allah is with the patient.&rdquo;</div><div class="coll-ref">Surah Al-Baqarah &middot; 2:153</div></div>
+  <div class="card" style="margin-top:6px"><div class="clbl">Add Your Own</div><div class="cttl">Save an Ayah</div><textarea class="notes-a" placeholder="Write your favourite ayah, translation, and why it moves you&hellip;"></textarea></div>
+  <div class="page-nav"><button class="nav-btn nav-prev" onclick="showP('memorise')">&#8592; ⭐ Memorisation</button><button class="nav-btn nav-next" onclick="showP('duas')">🤲 Dua List &#8594;</button></div>
+</div>
+
+<!-- DUAS -->
+<div id="page-duas" class="page">
+  <div class="chip">&#129330; Duas</div>
+  <h1 class="ph1">My <em>Dua</em> List</h1>
+  <div class="gdiv">&#10022;</div>
+  <div class="dua-card"><div class="dua-op">Morning Dua</div><div class="dua-txt">&#1575;&#1604;&#1604;&#1617;&#1607;&#1615;&#1605;&#1617;&#1614; &#1576;&#1616;&#1603;&#1614; &#1571;&#1614;&#1589;&#1618;&#1576;&#1614;&#1581;&#1618;&#1606;&#1614;&#1575;<br><em>&ldquo;O Allah, by Your grace we have reached the morning.&rdquo;</em></div></div>
+  <div class="dua-card"><div class="dua-op">Before Reading Quran</div><div class="dua-txt"><em>&ldquo;O Allah, open upon us Your wisdom and bless us with understanding of Your words.&rdquo;</em></div></div>
+  <div class="dua-card"><div class="dua-op">For a Soft Heart</div><div class="dua-txt">&#1585;&#1614;&#1576;&#1617;&#1614;&#1606;&#1614;&#1575; &#1604;&#1614;&#1575; &#1578;&#1615;&#1586;&#1616;&#1594;&#1618; &#1602;&#1615;&#1604;&#1615;&#1608;&#1576;&#1614;&#1606;&#1614;&#1575;<br><em>&ldquo;Our Lord, do not let our hearts deviate.&rdquo; &mdash; 3:8</em></div></div>
+  <div class="dua-card"><div class="dua-op">For Ease</div><div class="dua-txt">&#1585;&#1614;&#1576;&#1617;&#1616; &#1575;&#1588;&#1618;&#1585;&#1614;&#1581;&#1618; &#1604;&#1616;&#1610; &#1589;&#1614;&#1583;&#1618;&#1585;&#1616;&#1610; &#1608;&#1614;&#1610;&#1614;&#1587;&#1617;&#1616;&#1585;&#1618; &#1604;&#1616;&#1610; &#1571;&#1614;&#1605;&#1618;&#1585;&#1616;&#1610;<br><em>&ldquo;My Lord, expand for me my chest and ease for me my task.&rdquo; &mdash; 20:25-26</em></div></div>
+  <div class="dua-card"><div class="dua-op">For Guidance</div><div class="dua-txt">&#1575;&#1607;&#1618;&#1583;&#1616;&#1606;&#1614;&#1575; &#1575;&#1604;&#1589;&#1617;&#1616;&#1585;&#1614;&#1575;&#1591;&#1614; &#1575;&#1604;&#1618;&#1605;&#1615;&#1587;&#1618;&#1578;&#1614;&#1602;&#1616;&#1610;&#1605;&#1614;<br><em>&ldquo;Guide us to the straight path.&rdquo; &mdash; 1:6</em></div></div>
+  <div class="dua-card"><div class="dua-op">For Forgiveness</div><div class="dua-txt">&#1585;&#1614;&#1576;&#1617;&#1614;&#1606;&#1614;&#1575; &#1592;&#1614;&#1604;&#1614;&#1605;&#1618;&#1606;&#1614;&#1575; &#1571;&#1614;&#1606;&#1618;&#1601;&#1615;&#1587;&#1614;&#1606;&#1614;&#1575;<br><em>&ldquo;Our Lord, we have wronged ourselves...&rdquo; &mdash; 7:23</em></div></div>
+  <div class="card" style="margin-top:4px"><div class="clbl">My Personal Duas</div><div class="cttl">Write Your Heart&rsquo;s Wishes</div><textarea class="notes-a" placeholder="Pour your heart out here. Allah hears every word&hellip;"></textarea></div>
+  <div class="page-nav"><button class="nav-btn nav-prev" onclick="showP('collection')">&#8592; 💛 Favourite Ayahs</button><button class="nav-btn nav-next" onclick="showP('healing')">🌸 Verses That Heal &#8594;</button></div>
+</div>
+
+<!-- HEALING -->
+<div id="page-healing" class="page">
+  <div class="chip">&#127800; Healing</div>
+  <h1 class="ph1">Verses That <em>Heal My Heart</em></h1>
+  <div class="gdiv">&#10022;</div>
+  <p class="lead" style="margin-bottom:26px">When the world feels heavy, return here.</p>
+  <div class="heal-item"><div class="heal-n">1</div><div><div class="heal-ar">&#1601;&#1614;&#1573;&#1616;&#1606;&#1617;&#1614; &#1605;&#1614;&#1593;&#1614; &#1575;&#1604;&#1618;&#1593;&#1615;&#1587;&#1618;&#1585;&#1616; &#1610;&#1615;&#1587;&#1618;&#1585;&#1611;&#1575; &#1616;&#1573;&#1606;&#1617;&#1614; &#1605;&#1614;&#1593;&#1614; &#1575;&#1604;&#1618;&#1593;&#1615;&#1587;&#1618;&#1585;&#1616; &#1610;&#1615;&#1587;&#1618;&#1585;&#1611;&#1575;</div><div class="heal-en">&ldquo;For indeed, with hardship will be ease. Indeed, with hardship will be ease.&rdquo;</div><div class="heal-ref">Ash-Sharh 94:5&ndash;6 &middot; When life feels impossible</div></div></div>
+  <div class="heal-item"><div class="heal-n">2</div><div><div class="heal-ar">&#1571;&#1614;&#1604;&#1614;&#1575; &#1576;&#1616;&#1584;&#1616;&#1603;&#1618;&#1585;&#1616; &#1575;&#1604;&#1604;&#1617;&#1607;&#1616; &#1578;&#1614;&#1591;&#1618;&#1605;&#1614;&#1574;&#1616;&#1606;&#1617;&#1615; &#1575;&#1604;&#1618;&#1602;&#1615;&#1604;&#1615;&#1608;&#1576;&#1615;</div><div class="heal-en">&ldquo;In the remembrance of Allah do hearts find rest.&rdquo;</div><div class="heal-ref">Ar-Ra&rsquo;d 13:28 &middot; When your heart is restless</div></div></div>
+  <div class="heal-item"><div class="heal-n">3</div><div><div class="heal-ar">&#1608;&#1614;&#1607;&#1615;&#1608;&#1614; &#1605;&#1614;&#1593;&#1614;&#1603;&#1615;&#1605;&#1618; &#1571;&#1614;&#1610;&#1618;&#1606;&#1614; &#1605;&#1614;&#1575; &#1603;&#1615;&#1606;&#1578;&#1615;&#1605;&#1618;</div><div class="heal-en">&ldquo;And He is with you wherever you are.&rdquo;</div><div class="heal-ref">Al-Hadid 57:4 &middot; When you feel alone</div></div></div>
+  <div class="heal-item"><div class="heal-n">4</div><div><div class="heal-ar">&#1608;&#1614;&#1604;&#1614;&#1575; &#1578;&#1614;&#1610;&#1618;&#1571;&#1614;&#1587;&#1615;&#1608;&#1575; &#1605;&#1616;&#1606; &#1585;&#1617;&#1614;&#1608;&#1618;&#1581;&#1616; &#1575;&#1604;&#1604;&#1617;&#1607;&#1616;</div><div class="heal-en">&ldquo;Do not despair of relief from Allah.&rdquo;</div><div class="heal-ref">Yusuf 12:87 &middot; When hope feels far</div></div></div>
+  <div class="heal-item"><div class="heal-n">5</div><div><div class="heal-ar">&#1573;&#1616;&#1606;&#1617;&#1614; &#1575;&#1604;&#1604;&#1617;&#1607;&#1614; &#1605;&#1614;&#1593;&#1614; &#1575;&#1604;&#1589;&#1617;&#1614;&#1575;&#1576;&#1616;&#1585;&#1616;&#1610;&#1606;&#1614;</div><div class="heal-en">&ldquo;Indeed, Allah is with the patient.&rdquo;</div><div class="heal-ref">Al-Baqarah 2:153 &middot; When endurance feels hard</div></div></div>
+  <div class="heal-item"><div class="heal-n">6</div><div><div class="heal-ar">&#1605;&#1614;&#1575; &#1608;&#1614;&#1583;&#1617;&#1614;&#1593;&#1614;&#1603;&#1614; &#1585;&#1614;&#1576;&#1617;&#1615;&#1603;&#1614; &#1608;&#1614;&#1605;&#1614;&#1575; &#1602;&#1614;&#1604;&#1614;&#1609;</div><div class="heal-en">&ldquo;Your Lord has not forsaken you, nor has He forgotten you.&rdquo;</div><div class="heal-ref">Ad-Dhuha 93:3 &middot; When you feel abandoned</div></div></div>
+  <div class="heal-item"><div class="heal-n">7</div><div><div class="heal-ar">&#1581;&#1614;&#1587;&#1618;&#1576;&#1615;&#1606;&#1614;&#1575; &#1575;&#1604;&#1604;&#1617;&#1607;&#1615; &#1608;&#1614;&#1606;&#1616;&#1593;&#1618;&#1605;&#1614; &#1575;&#1604;&#1618;&#1608;&#1614;&#1603;&#1616;&#1610;&#1604;&#1615;</div><div class="heal-en">&ldquo;Allah is sufficient for us, and He is the best disposer of affairs.&rdquo;</div><div class="heal-ref">Al-Imran 3:173 &middot; When you feel overwhelmed</div></div></div>
+  <div class="heal-item"><div class="heal-n">8</div><div><div class="heal-ar">&#1608;&#1614;&#1606;&#1614;&#1581;&#1618;&#1606;&#1615; &#1571;&#1614;&#1602;&#1618;&#1585;&#1614;&#1576;&#1615; &#1573;&#1616;&#1604;&#1614;&#1610;&#1618;&#1607;&#1616; &#1605;&#1616;&#1606;&#1618; &#1581;&#1614;&#1576;&#1618;&#1604;&#1616; &#1575;&#1604;&#1618;&#1608;&#1614;&#1585;&#1616;&#1610;&#1583;&#1616;</div><div class="heal-en">&ldquo;We are closer to him than his jugular vein.&rdquo;</div><div class="heal-ref">Qaf 50:16 &middot; When you feel disconnected from Allah</div></div></div>
+  <div class="card" style="margin-top:16px"><div class="clbl">Add Your Own</div><div class="cttl">A Verse That Healed Me</div><textarea class="notes-a" placeholder="Write the verse that found you when you needed it most&hellip;"></textarea></div>
+  <div class="page-nav"><button class="nav-btn nav-prev" onclick="showP('duas')">&#8592; 🤲 Dua List</button><button class="nav-btn nav-next" onclick="showP('gratitude')">✨ Gratitude &#8594;</button></div>
+</div>
+
+<!-- GRATITUDE -->
+<div id="page-gratitude" class="page">
+  <div class="chip">&#10024; Gratitude</div>
+  <h1 class="ph1">My <em>Gratitude</em> Pages</h1>
+  <div class="gdiv">&#10022;</div>
+  <div class="qbanner"><p>&ldquo;If you are grateful, I will surely increase you in favor.&rdquo;</p><small>Surah Ibrahim &middot; 14:7</small></div>
+  <div class="card ca">
+    <div class="clbl">Today I Am Grateful For&hellip;</div><div class="cttl">Daily Gratitude</div>
+    <div style="margin-top:8px">
+      <div class="gr-row"><span class="gr-ico">&#127800;</span><input class="gr-in" type="text" placeholder="I am grateful for&hellip;"></div>
+      <div class="gr-row"><span class="gr-ico">&#127807;</span><input class="gr-in" type="text" placeholder="I am grateful for&hellip;"></div>
+      <div class="gr-row"><span class="gr-ico">&#10022;</span><input class="gr-in" type="text" placeholder="I am grateful for&hellip;"></div>
+      <div class="gr-row"><span class="gr-ico">&#128155;</span><input class="gr-in" type="text" placeholder="I am grateful for&hellip;"></div>
+      <div class="gr-row"><span class="gr-ico">&#127769;</span><input class="gr-in" type="text" placeholder="I am grateful for&hellip;"></div>
+    </div>
+  </div>
+  <div class="card"><div class="clbl">This Week</div><div class="cttl">Moments of Blessing</div><textarea class="notes-a" placeholder="What blessings from Allah touched your heart this week?&hellip;"></textarea></div>
+  <div class="dua-card"><div class="dua-op">&#1575;&#1604;&#1618;&#1581;&#1614;&#1605;&#1618;&#1583;&#1615; &#1604;&#1604;&#1617;&#1607;&#1616; &#1585;&#1614;&#1576;&#1617;&#1616; &#1575;&#1604;&#1618;&#1593;&#1614;&#1575;&#1604;&#1614;&#1605;&#1616;&#1610;&#1606;&#1614;</div><div class="dua-txt">&ldquo;All praise is due to Allah, Lord of all the worlds.&rdquo; &mdash; Al-Fatiha 1:2</div></div>
+  <div class="page-nav"><button class="nav-btn nav-prev" onclick="showP('healing')">&#8592; 🌸 Verses That Heal</button><button class="nav-btn nav-next" onclick="showP('ramadan')">🌙 Ramadan &#8594;</button></div>
+</div>
+
+<!-- RAMADAN -->
+<div id="page-ramadan" class="page">
+  <div class="chip">&#127769; Ramadan</div>
+  <h1 class="ph1">Ramadan <em>Reflections</em></h1>
+  <div class="gdiv">&#10022;</div>
+  <div class="qbanner"><p>&ldquo;Ramadan is the month in which the Quran was revealed.&rdquo;</p><small>Surah Al-Baqarah &middot; 2:185</small></div>
+  <p class="lead" style="margin:20px 0 22px">Honour the month the Quran was born. Use each day to go deeper.</p>
+  <div id="ram-days-con"></div>
+  <p style="text-align:center;color:var(--faint);font-style:italic;font-family:'Cormorant Garamond',serif;margin-top:8px;font-size:14px">Continue for all 30 days &#10022;</p>
+  <div class="page-nav"><button class="nav-btn nav-prev" onclick="showP('gratitude')">&#8592; ✨ Gratitude</button></div>
+</div>
+
+</div><!-- end #main -->
+
+<script>
+var PAGE_ORDER = ['cover','intro','surahs','habit','goals','memorise','collection','duas','healing','gratitude','ramadan'];
+var visited = {};
+
+function showP(id){
+  document.querySelectorAll('.page').forEach(function(p){ p.style.display='none'; p.classList.remove('active'); });
+  document.getElementById('page-cover').style.display='none';
+  var t = document.getElementById('page-'+id);
+  if(id==='cover'){ document.getElementById('page-cover').style.display='block'; }
+  else if(t){ t.style.display='block'; t.classList.add('active'); }
+  document.querySelectorAll('.sb-link').forEach(function(l){ l.classList.remove('active'); });
+  document.querySelectorAll('.sb-link').forEach(function(l){
+    var oc = l.getAttribute('onclick')||'';
+    if(oc.indexOf("'"+id+"'")>-1) l.classList.add('active');
+  });
+  visited[id]=true;
+  updateProgress();
+  window.scrollTo(0,0);
+}
+
+function updateProgress(){
+  var count = Object.keys(visited).length;
+  var pct = Math.round((count/PAGE_ORDER.length)*100);
+  var fill = document.getElementById('prog-fill');
+  var txt = document.getElementById('prog-txt');
+  if(fill) fill.style.width = pct+'%';
+  if(txt) txt.textContent = count+' of '+PAGE_ORDER.length+' pages visited';
+}
+
+function toggleSB(){ document.getElementById('sidebar').classList.toggle('open'); }
+
+var SURAHS = [
+  {n:1,en:"Al-Fatiha",ar:"الفاتحة",meaning:"The Opening",type:"Makki",ayahs:7,themes:["Praise","Guidance","Prayer"],easy:"Al-Fatiha is the opening chapter and the most recited prayer in Islam. Every Muslim says it at least 17 times daily. In seven short verses it captures the entire relationship: who Allah is, who we are, and what we need from Him.",taf:"Known as Umm al-Quran — the Mother of the Quran. We declare Allah's perfect praise and lordship, affirm His mercy, acknowledge the Day of Judgment, then make our declaration: You alone we worship, You alone we ask for help. Finally our most essential dua: guide us to the straight path.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Fatiha 1:6",ayahWhy:"The most important request a human can make. Every day in every prayer we ask Allah to keep us on the right path. It is humility, trust, and hope all in one.",dua:"O Allah, just as You revealed Al-Fatiha as a light and healing, let it be a light in my heart. Guide my steps and keep me on Your straight path. Ameen."},
+  {n:2,en:"Al-Baqarah",ar:"البقرة",meaning:"The Cow",type:"Madani",ayahs:286,themes:["Faith","Law","Prophets","Patience"],easy:"Al-Baqarah is the longest Surah. It is like a constitution for the Muslim community covering faith, prayer, fasting, marriage, money, and stories of the prophets. It contains Ayat al-Kursi, the greatest verse in the Quran.",taf:"Revealed in Madinah, it tells the story of Bani Israel — their blessings and mistakes. It contains Ayat al-Kursi (2:255) describing Allah's greatness. The Surah ends with the most beloved duas and the declaration that Allah does not burden a soul beyond what it can bear.",ayahAr:"لَا يُكَلِّفُ اللَّهُ نَفْسًا إِلَّا وُسْعَهَا",ayahEn:"\"Allah does not burden a soul beyond that it can bear.\"",ayahRef:"Al-Baqarah 2:286",ayahWhy:"Whatever you are going through right now — Allah already knows you can get through it. You were built for this.",dua:"O Allah, do not burden us with more than we can bear. Pardon us, forgive us, and have mercy upon us. Ameen."},
+  {n:3,en:"Al-Imran",ar:"آل عمران",meaning:"Family of Imran",type:"Madani",ayahs:200,themes:["Faith","Unity","Maryam","Uhud"],easy:"This Surah focuses on the family of Imran — Maryam and Prophet Isa. It affirms that Islam, Christianity, and Judaism share one root: worship of one God. It also reflects on the Battle of Uhud, teaching resilience.",taf:"Al-Imran affirms the Quran and Torah as revelation from the same God. It tells the miraculous births of Yahya and Isa. It contains the reminder: every soul shall taste death — this world is temporary, so live with purpose.",ayahAr:"كُلُّ نَفْسٍ ذَائِقَةُ الْمَوْتِ",ayahEn:"\"Every soul shall taste death.\"",ayahRef:"Al-Imran 3:185",ayahWhy:"A reminder not to be too attached to this world. Death is certain — let it push us toward living with purpose and sincerity.",dua:"O Allah, do not let our hearts deviate after You have guided us. Grant us mercy from Yourself. Ameen."},
+  {n:4,en:"An-Nisa",ar:"النساء",meaning:"The Women",type:"Madani",ayahs:176,themes:["Justice","Women's Rights","Family","Inheritance"],easy:"An-Nisa is a Surah about justice especially for women. In the 7th century Islam gave women rights the world would not recognise for another thousand years: the right to inherit, choose marriage, and keep their own wealth.",taf:"Revealed after the Battle of Uhud when many women became widows. It addresses family structure and social justice, prohibits oppression of women, establishes inheritance laws, and speaks about the rights of orphans.",ayahAr:"إِنَّ اللَّهَ كَانَ عَلِيمًا حَكِيمًا",ayahEn:"\"Indeed, Allah is ever Knowing and Wise.\"",ayahRef:"An-Nisa 4:11",ayahWhy:"When Allah gives us laws we do not fully understand, this reminds us — He knows what we do not. His wisdom is perfect.",dua:"O Allah, grant me a just heart and eyes that see the dignity in every soul You created. Ameen."},
+  {n:5,en:"Al-Maida",ar:"المائدة",meaning:"The Table Spread",type:"Madani",ayahs:120,themes:["Covenants","Food Laws","Justice","Completion"],easy:"Al-Maida means the table spread with food — referencing the miracle sent to Prophet Isa. This Surah is about fulfilling covenants and promises. One of the last Surahs revealed, it contains the completion of Islam.",taf:"It includes 5:3: Today I have completed your religion for you — revealed on Arafah, the final pilgrimage. It discusses interfaith relations, dietary laws, and the stories of Musa and Isa.",ayahAr:"الْيَوْمَ أَكْمَلْتُ لَكُمْ دِينَكُمْ",ayahEn:"\"Today I have completed your religion for you.\"",ayahRef:"Al-Maida 5:3",ayahWhy:"Islam is complete, whole, and perfect. Nothing needs to be added. This verse is a declaration of the perfection of Allah's gift to humanity.",dua:"O Allah, help me fulfil every covenant and promise I make to You and to others. Ameen."},
+  {n:6,en:"Al-Anam",ar:"الأنعام",meaning:"The Cattle",type:"Makki",ayahs:165,themes:["Tawhid","Creation","Prophethood","Logic"],easy:"Al-Anam confronts the fundamental question: who deserves to be worshipped? Allah challenges those who worship idols or anything besides Him with powerful logical arguments. It tells how Ibrahim came to truth by observing creation.",taf:"This entire Surah was revealed at once in Makkah — a rare event. It presents proofs of Allah's existence through creation and logic. It contains the six commandments in 6:151-153 summarising key Islamic ethics.",ayahAr:"وَعِندَهُ مَفَاتِحُ الْغَيْبِ",ayahEn:"\"And with Him are the keys of the unseen.\"",ayahRef:"Al-Anam 6:59",ayahWhy:"Only Allah knows what is hidden. Stop worrying about the future and trust the One who holds all knowledge.",dua:"O Allah, You know what I do not know. I trust You with the unseen parts of my life. Guide me. Ameen."},
+  {n:7,en:"Al-Araf",ar:"الأعراف",meaning:"The Heights",type:"Makki",ayahs:206,themes:["Prophets","Judgment","Arrogance","Good vs Evil"],easy:"Al-Araf takes us through the entire history of humanity — from Adam and Iblis, through the stories of Nuh, Hud, Salih, Lut, Shuayb, and Musa, showing the pattern: prophets come, people reject them, consequences follow.",taf:"The central lesson is that arrogance destroys. Iblis refused to bow to Adam out of arrogance. Every nation that rejected its prophet did so from arrogance. The Surah warns the Quraysh they are repeating the same mistake.",ayahAr:"إِنَّ رَحْمَتِ اللَّهِ قَرِيبٌ مِّنَ الْمُحْسِنِينَ",ayahEn:"\"Indeed, the mercy of Allah is near to the doers of good.\"",ayahRef:"Al-Araf 7:56",ayahWhy:"Allah's mercy is not far — it is close to those who do good. This is an invitation to act, not just to believe.",dua:"O Allah, protect me from arrogance. Soften my heart so I can always recognise the truth. Ameen."},
+  {n:8,en:"Al-Anfal",ar:"الأنفال",meaning:"The Spoils of War",type:"Madani",ayahs:75,themes:["Battle of Badr","Trust","Divine Help","Unity"],easy:"Al-Anfal was revealed after the Battle of Badr where 313 Muslims miraculously defeated over 1000. The Surah discusses how the victory happened and the spiritual qualities that bring divine help.",taf:"The Muslims at Badr were outnumbered and under-equipped. Yet they won because of tawakkul — complete trust in Allah. Victory comes not from numbers or weapons but from faith and unity.",ayahAr:"وَاعْلَمُوا أَنَّ اللَّهَ مَعَ الْمُتَّقِينَ",ayahEn:"\"And know that Allah is with those who fear Him.\"",ayahRef:"Al-Anfal 8:69",ayahWhy:"The ultimate assurance. If we maintain taqwa, we are never alone. Allah Himself is with us.",dua:"O Allah, grant me tawakkul — real, deep, unshakeable trust in You. Ameen."},
+  {n:9,en:"At-Tawbah",ar:"التوبة",meaning:"The Repentance",type:"Madani",ayahs:129,themes:["Repentance","Hypocrisy","Loyalty","Forgiveness"],easy:"At-Tawbah is the only Surah not beginning with Bismillah. It deals with those who broke covenants. But it also speaks beautifully about repentance — the door of Allah's forgiveness is always open, no matter what.",taf:"This Surah distinguishes between sincere believers and hypocrites. Yet it contains the most hopeful verse about repentance: Indeed, Allah loves those who constantly repent. No matter how far you have strayed, return to Allah.",ayahAr:"إِنَّ اللَّهَ يُحِبُّ التَّوَّابِينَ",ayahEn:"\"Indeed, Allah loves those who constantly repent.\"",ayahRef:"At-Tawbah 9:108",ayahWhy:"You do not need to be perfect — you need to keep returning. Every time you turn back to Allah, He loves you for it.",dua:"O Allah, I repent to You from all my sins. Accept my repentance, purify my heart, and let me return to You again and again. Ameen."},
+  {n:10,en:"Yunus",ar:"يونس",meaning:"Jonah",type:"Makki",ayahs:109,themes:["Tawhid","Prophethood","Story of Yunus","Hope"],easy:"Surah Yunus is named after the Prophet Yunus who was swallowed by a whale. His story teaches that even a prophet can make a mistake, and that sincere dua from the darkest place can bring you back to light.",taf:"In the belly of the whale, in absolute darkness, Yunus made tasbih and was saved. No situation is too dark for Allah's mercy. The Surah opens with a powerful defence of prophethood and the Quran.",ayahAr:"لَّا إِلَٰهَ إِلَّا أَنتَ سُبْحَانَكَ إِنِّي كُنتُ مِنَ الظَّالِمِينَ",ayahEn:"\"There is no deity except You; exalted are You. I have been of the wrongdoers.\"",ayahRef:"Yunus 10:87 — Dua of Yunus",ayahWhy:"The dua that brought Yunus out of the whale's belly. A dua of complete humility. Whoever recites it in difficulty, Allah will answer.",dua:"O Allah, I admit my wrongs. You are perfect and I am not. Rescue me from my difficulty as You rescued Yunus. Ameen."},
+  {n:11,en:"Hud",ar:"هود",meaning:"Hud",type:"Makki",ayahs:123,themes:["Steadfastness","7 Prophets","Consequences","Istiqamah"],easy:"Surah Hud made the Prophet say it turned his hair grey — because of how seriously it addresses the consequences of rejecting truth. It tells the stories of 7 prophets back to back.",taf:"Each prophet's story ends with destruction of those who rejected them. The lesson: truth always prevails. The Surah commands: Be steadfast as you have been commanded. Consistency on the straight path is the greatest act of worship.",ayahAr:"فَاسْتَقِمْ كَمَا أُمِرْتَ",ayahEn:"\"So be steadfast as you have been commanded.\"",ayahRef:"Hud 11:112",ayahWhy:"Not a dramatic transformation — just steady, consistent commitment. Day after day. That is what pleases Allah.",dua:"O Allah, grant me istiqamah on Your path. Not just in good times, but especially when it is hard. Ameen."},
+  {n:12,en:"Yusuf",ar:"يوسف",meaning:"Joseph",type:"Makki",ayahs:111,themes:["Patience","Forgiveness","Divine Plan","Trust"],easy:"Surah Yusuf tells the complete story of Prophet Yusuf — the only Surah that tells one complete narrative. Thrown into a well by his brothers, sold as a slave, imprisoned falsely, then raised to power — all by the plan of Allah.",taf:"Allah calls this the best of stories. Every stage of Yusuf's life was a test: jealousy, temptation, wrongful imprisonment. Yet he never lost his character or connection to Allah. At the end, he forgave his brothers completely.",ayahAr:"وَلَا تَيْأَسُوا مِن رَّوْحِ اللَّهِ",ayahEn:"\"And do not despair of relief from Allah.\"",ayahRef:"Yusuf 12:87",ayahWhy:"Said by Prophet Yaqub when his sons had lost hope. After years of grief, hope was the bridge back to his son. Never stop hoping in Allah.",dua:"O Allah, like Yusuf, let me maintain my character through every test. Let me emerge from every dark place stronger. Ameen."},
+  {n:13,en:"Ar-Rad",ar:"الرعد",meaning:"The Thunder",type:"Madani",ayahs:43,themes:["Power of Allah","Quran as Truth","Hearts at Rest"],easy:"Ar-Rad is named after thunder — which glorifies Allah. Even the storms of nature are in constant praise. This Surah shows that all of creation is the miracle for those who demand proof.",taf:"The Surah presents proofs of Allah's power in nature: thunder, lightning, rain, rivers, plants. It contains one of the most famous verses in the Quran — the verse of hearts finding rest in the remembrance of Allah.",ayahAr:"أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ",ayahEn:"\"Verily, in the remembrance of Allah do hearts find rest.\"",ayahRef:"Ar-Rad 13:28",ayahWhy:"The cure for a restless heart is not distraction — it is dhikr. Say Subhanallah, Alhamdulillah. Feel the peace return.",dua:"O Allah, let Your remembrance be the habit of my tongue and the anchor of my heart. Ameen."},
+  {n:14,en:"Ibrahim",ar:"إبراهيم",meaning:"Abraham",type:"Makki",ayahs:52,themes:["Gratitude","Tawhid","Dua of Ibrahim","Blessings"],easy:"Surah Ibrahim focuses on two things: the mission of all prophets and the beautiful dua of Ibrahim for his family and the city of Makkah.",taf:"Ibrahim left his wife Hajar and infant son Ismail in a barren valley with nothing but trust in Allah and made dua for them. His dua is recorded in 14:35-41. The Surah contains the metaphor of a good word being like a good tree — rooted firm, reaching to the sky.",ayahAr:"لَئِن شَكَرْتُمْ لَأَزِيدَنَّكُمْ",ayahEn:"\"If you are grateful, I will surely increase you in favor.\"",ayahRef:"Ibrahim 14:7",ayahWhy:"Gratitude is not just politeness — it is a key that opens more blessings. When we truly appreciate what we have, Allah gives more.",dua:"O Allah, make me among the grateful. Open my eyes to see Your blessings in every moment. Ameen."},
+  {n:15,en:"Al-Hijr",ar:"الحجر",meaning:"The Rocky Tract",type:"Makki",ayahs:99,themes:["Quran Protected","Iblis","Story of Lut"],easy:"Al-Hijr assures believers that Allah Himself has taken responsibility for protecting the Quran. No matter how many centuries pass, not one letter has changed.",taf:"The Surah opens with the promise that the Quran is guarded by Allah. It tells the story of Iblis's arrogance and refusal to bow to Adam. It ends: Worship your Lord until certainty comes to you — worship until death.",ayahAr:"إِنَّا نَحْنُ نَزَّلْنَا الذِّكْرَ وَإِنَّا لَهُ لَحَافِظُونَ",ayahEn:"\"Indeed, it is We who sent down the Quran and indeed, We will be its guardian.\"",ayahRef:"Al-Hijr 15:9",ayahWhy:"Every word of the Quran you read today is exactly as it was revealed 1400 years ago. This is a miracle of preservation with no parallel in history.",dua:"O Allah, thank You for preserving Your book. Let me honour it by reading, understanding, and living by it. Ameen."},
+  {n:16,en:"An-Nahl",ar:"النحل",meaning:"The Bee",type:"Makki",ayahs:128,themes:["Blessings","Gratitude","Honey as Healing","Tawhid"],easy:"An-Nahl is the Surah of blessings. Allah draws our attention to all He has given us: animals, plants, rain, ships, honey from bees, and human intellect. Every thing around us is a gift.",taf:"The bee builds perfect hexagonal homes by divine inspiration and produces honey — a cure for people. Allah is showing us that even a small insect teaches His power and wisdom. The Surah addresses those who receive blessings from Allah but attribute them to others.",ayahAr:"وَإِن تَعُدُّوا نِعْمَةَ اللَّهِ لَا تُحْصُوهَا",ayahEn:"\"And if you should count the favors of Allah, you could not enumerate them.\"",ayahRef:"An-Nahl 16:18",ayahWhy:"We cannot even count the blessings of Allah — the air we breathe, the heartbeat we do not control. This verse is a reminder to never feel ungrateful.",dua:"O Allah, when I am overwhelmed with what I lack, remind me of what I have. Ameen."},
+  {n:17,en:"Al-Isra",ar:"الإسراء",meaning:"The Night Journey",type:"Makki",ayahs:111,themes:["Night Journey","Five Prayers","Honour of Humans","Ethics"],easy:"Al-Isra begins with the miraculous Night Journey of the Prophet from Makkah to Jerusalem, then up through the seven heavens. The five daily prayers were prescribed on this night.",taf:"The Surah presents 17 commandments — a comprehensive ethical code for Muslims. It honours the children of Adam: We have dignified the children of Adam. It speaks about the Quran as guidance and healing for the soul.",ayahAr:"وَقَضَىٰ رَبُّكَ أَلَّا تَعْبُدُوا إِلَّا إِيَّاهُ وَبِالْوَالِدَيْنِ إِحْسَانًا",ayahEn:"\"Your Lord has decreed that you worship none but Him and that you be good to parents.\"",ayahRef:"Al-Isra 17:23",ayahWhy:"Two of the most important commandments in one verse. Worship Allah, and be excellent to parents. These two are always mentioned together in the Quran.",dua:"O Allah, let me be sincere in my worship and a source of joy to my parents. Ameen."},
+  {n:18,en:"Al-Kahf",ar:"الكهف",meaning:"The Cave",type:"Makki",ayahs:110,themes:["4 Stories","Protection from Dajjal","Patience","Tawakkul"],easy:"Al-Kahf contains four famous stories about different types of trial: the People of the Cave (faith), the Man with Two Gardens (wealth), Musa and Khidr (knowledge), and Dhul-Qarnayn (power). Recite it every Friday for protection.",taf:"The four stories teach that no matter your trial — the answer is always humility and trust in Allah. The lesson from Musa and Khidr: what appears as hardship often carries Allah's hidden wisdom.",ayahAr:"وَلَا تَقُولَنَّ لِشَيْءٍ إِنِّي فَاعِلٌ ذَٰلِكَ غَدًا إِلَّا أَن يَشَاءَ اللَّهُ",ayahEn:"\"And never say of anything, I will do that tomorrow, except when adding If Allah wills.\"",ayahRef:"Al-Kahf 18:23-24",ayahWhy:"This is where we get Inshallah — not as a vague maybe, but a sincere acknowledgment that all plans are in Allah's hands.",dua:"O Allah, keep my heart from arrogance. Let me always remember that all is in Your hands. Ameen."},
+  {n:19,en:"Maryam",ar:"مريم",meaning:"Mary",type:"Makki",ayahs:98,themes:["Maryam","Birth of Jesus","Miracles","Allah's Power"],easy:"Surah Maryam tells the miraculous stories of two births: Yahya to elderly parents, and Prophet Isa to the virgin Maryam without a father. These stories show Allah's power has no limits.",taf:"Maryam is the only woman mentioned by name in the Quran with an entire Surah named after her. When people accused her, the infant Isa spoke from the cradle to defend his mother. The Surah affirms the prophethood of Jesus and corrects the belief in his divinity.",ayahAr:"قَالَ إِنِّي عَبْدُ اللَّهِ آتَانِيَ الْكِتَابَ وَجَعَلَنِي نَبِيًّا",ayahEn:"\"He said: Indeed, I am a servant of Allah. He has given me the Scripture and made me a prophet.\"",ayahRef:"Maryam 19:30",ayahWhy:"The first words of the infant Isa from the cradle. He declared himself a servant of Allah — not a god. This one verse clarifies the Islamic view of Jesus with perfect clarity.",dua:"O Allah, bless me with the strength of Maryam — to choose worship over the world, to endure what people say, and to trust You completely. Ameen."},
+  {n:20,en:"Taha",ar:"طه",meaning:"Ta-Ha",type:"Makki",ayahs:135,themes:["Prophet Musa","Ease After Hardship","Dhikr","Adam"],easy:"Surah Taha is one of the most comforting Surahs. It begins: We have not sent down the Quran to cause you distress. It tells the extended story of Prophet Musa — his birth, his mother's courage, and his confrontation with Pharaoh.",taf:"The story of Musa is told with tenderness. His mother placed him in the river as a baby — terror but also trust. Allah guided him back to her. Later as a prophet, Musa faced Pharaoh with only a staff and trust in Allah.",ayahAr:"رَبِّ اشْرَحْ لِي صَدْرِي وَيَسِّرْ لِي أَمْرِي",ayahEn:"\"My Lord, expand for me my chest and ease for me my task.\"",ayahRef:"Taha 20:25-26 — Dua of Musa",ayahWhy:"Musa's dua before facing Pharaoh. Use it before any difficult task. Ask Allah to open your heart and ease your way.",dua:"O Allah, expand my chest, ease my task, and untie the knot from my tongue. Ameen."},
+  {n:21,en:"Al-Anbiya",ar:"الأنبياء",meaning:"The Prophets",type:"Makki",ayahs:112,themes:["18 Prophets","Tawhid","Unity of Message"],easy:"Al-Anbiya gathers the stories of 18 prophets in one Surah showing all prophets came with the same message: worship Allah alone.",taf:"The Surah shows the continuity of prophethood. It contains the beautiful dua of Yunus from the whale and the story of Ayyub who endured years of illness with patience.",ayahAr:"وَأَيُّوبَ إِذْ نَادَىٰ رَبَّهُ أَنِّي مَسَّنِيَ الضُّرُّ وَأَنتَ أَرْحَمُ الرَّاحِمِينَ",ayahEn:"\"And Ayyub when he called: Adversity has touched me, and You are the most merciful.\"",ayahRef:"Al-Anbiya 21:83",ayahWhy:"This short humble dua was answered after years of suffering. You do not need elaborate words — just honest pain and trust in Allah.",dua:"O Allah, adversity has touched me. And You are the Most Merciful. Answer me as You answered Ayyub. Ameen."},
+  {n:22,en:"Al-Hajj",ar:"الحج",meaning:"The Pilgrimage",type:"Madani",ayahs:78,themes:["Hajj","Day of Judgment","Ibrahim","Kaabah"],easy:"Al-Hajj is named after the pilgrimage to Makkah. It describes the meaning and rituals of Hajj and the powerful imagery of the Day of Judgment.",taf:"The Surah begins with a vivid description of the Day of Judgment, then transitions to the rituals of Hajj and their spiritual meaning. It tells how Ibrahim built the Kaabah.",ayahAr:"وَأَذِّن فِي النَّاسِ بِالْحَجِّ يَأْتُوكَ رِجَالًا",ayahEn:"\"And proclaim to the people the Hajj; they will come to you on foot.\"",ayahRef:"Al-Hajj 22:27",ayahWhy:"Allah commanded Ibrahim to announce Hajj and billions have responded to that call throughout history. The power of one sincere command from Allah.",dua:"O Allah, grant me the opportunity to visit Your house and complete Hajj with sincerity. Ameen."},
+  {n:23,en:"Al-Muminun",ar:"المؤمنون",meaning:"The Believers",type:"Makki",ayahs:118,themes:["Qualities of Believers","Creation of Humans","Prophets"],easy:"Al-Muminun opens with the qualities that define a true believer and what it takes to inherit Jannah — humility in prayer, avoiding vain talk, paying zakat, guarding chastity.",taf:"The Surah then describes the amazing creation of the human being from a drop of water to a complete person. It tells us that life, death, and resurrection are all in Allah's control.",ayahAr:"قَدْ أَفْلَحَ الْمُؤْمِنُونَ",ayahEn:"\"Certainly will the believers have succeeded.\"",ayahRef:"Al-Muminun 23:1",ayahWhy:"The Surah opens with certainty — not hope, not maybe, but CERTAINLY. The believers will succeed. This is a promise from Allah.",dua:"O Allah, make me of the successful believers — humble in prayer, guarding my tongue, and sincere in my worship. Ameen."},
+  {n:24,en:"An-Nur",ar:"النور",meaning:"The Light",type:"Madani",ayahs:64,themes:["Modesty","Social Ethics","Light of Allah","Slander"],easy:"An-Nur is named after the beautiful verse comparing Allah to Light. It sets out laws about modesty, marriage, and social morality including the famous Light Verse 24:35.",taf:"Revealed after false accusations against Aisha. It clears her name and sets strict standards for proof before making accusations. Then gives the beautiful metaphor of Allah as a lantern — a niche with a lamp, a glass like a shining star.",ayahAr:"اللَّهُ نُورُ السَّمَاوَاتِ وَالْأَرْضِ",ayahEn:"\"Allah is the Light of the heavens and the earth.\"",ayahRef:"An-Nur 24:35",ayahWhy:"Allah is the ultimate source of all light — physical, spiritual, moral. Darkness only exists where His light has not reached.",dua:"O Allah, place light in my heart, light in my sight, light in my hearing, and make me light. Ameen."},
+  {n:25,en:"Al-Furqan",ar:"الفرقان",meaning:"The Criterion",type:"Makki",ayahs:77,themes:["Quran as Criterion","True Servants","Tawhid"],easy:"Al-Furqan means the criterion — the standard by which truth and falsehood are distinguished. It describes the beautiful qualities of Ibad ar-Rahman — the true servants of the Most Merciful.",taf:"The Surah ends with one of the most beautiful passages: a description of the true servants of Allah who walk humbly, speak peacefully, spend in balance, and repent sincerely.",ayahAr:"وَعِبَادُ الرَّحْمَٰنِ الَّذِينَ يَمْشُونَ عَلَى الْأَرْضِ هَوْنًا",ayahEn:"\"The servants of the Most Merciful are those who walk upon the earth gently.\"",ayahRef:"Al-Furqan 25:63",ayahWhy:"Gentleness is a quality of the servants of Rahman. In a world of noise and aggression, softness and humility are marks of the believer.",dua:"O Allah, make me of the Ibad ar-Rahman — gentle, humble, sincere, and balanced. Ameen."},
+  {n:26,en:"Ash-Shuara",ar:"الشعراء",meaning:"The Poets",type:"Makki",ayahs:227,themes:["Prophets' Stories","Quran vs Poetry","Truth"],easy:"Ash-Shuara tells the stories of several prophets each rejected by their people. The Surah ends by contrasting the Quran with poetry — poets wander in confusion, but the Quran is a clear message from the Lord of the worlds.",taf:"A key theme is the contrast between falsehood which seems attractive and truth which is clear and sincere. The repeated phrase: your Lord is the Exalted in Might, the Merciful — reminds us mercy always follows power.",ayahAr:"وَتَوَكَّلْ عَلَى الْعَزِيزِ الرَّحِيمِ",ayahEn:"\"And rely upon the Exalted in Might, the Merciful.\"",ayahRef:"Ash-Shuara 26:217",ayahWhy:"After listing all the prophets and their trials, the ultimate advice is simple: rely on Allah. He is both Mighty and Merciful.",dua:"O Allah, when I face rejection in trying to do good, let me turn to You completely. You are enough for me. Ameen."},
+  {n:27,en:"An-Naml",ar:"النمل",meaning:"The Ant",type:"Makki",ayahs:93,themes:["Sulaiman","Queen of Sheba","Signs of Allah","Jannah"],easy:"An-Naml tells the remarkable story of Prophet Sulaiman who could communicate with animals, command winds, and had armies of humans, jinn, and birds. It also tells the story of the Queen of Sheba who ultimately submitted to Allah.",taf:"One of the most touching moments is when Sulaiman heard an ant warning other ants about his army approaching and he smiled and made dua. This shows that a truly great person notices even the smallest creation of Allah.",ayahAr:"رَبِّ أَوْزِعْنِي أَنْ أَشْكُرَ نِعْمَتَكَ الَّتِي أَنْعَمْتَ عَلَيَّ",ayahEn:"\"My Lord, enable me to be grateful for Your favor which You have bestowed upon me.\"",ayahRef:"An-Naml 27:19 — Dua of Sulaiman",ayahWhy:"Even a prophet who had everything asked Allah to help him be grateful. Gratitude is not automatic; it must be asked for.",dua:"O Allah, enable me to be grateful for all You have given me and to do righteous deeds that please You. Ameen."},
+  {n:28,en:"Al-Qasas",ar:"القصص",meaning:"The Stories",type:"Makki",ayahs:88,themes:["Story of Musa","Power and Corruption","Trust in Allah"],easy:"Al-Qasas tells the most complete story of Prophet Musa in the Quran — from his birth to his return as a prophet. It also tells the story of Qarun who became arrogant because of his wealth and was swallowed by the earth.",taf:"The Surah teaches that power without righteousness is temporary. Pharaoh had the mightiest empire — and he drowned. Qarun had more wealth than anyone — and the earth swallowed him. The true winner holds onto truth regardless of circumstances.",ayahAr:"إِنَّ الَّذِي فَرَضَ عَلَيْكَ الْقُرْآنَ لَرَادُّكَ إِلَىٰ مَعَادٍ",ayahEn:"\"Indeed, He who imposed upon you the Quran will take you back to a place of return.\"",ayahRef:"Al-Qasas 28:85",ayahWhy:"Revealed when the Prophet was leaving Makkah with grief. Allah promised he would return. A promise of home, of return, of hope — for anyone in exile.",dua:"O Allah, when I am far from what I love, remind me that You are always taking me to where I need to be. Ameen."},
+  {n:29,en:"Al-Ankabut",ar:"العنكبوت",meaning:"The Spider",type:"Makki",ayahs:69,themes:["Tests Are Inevitable","Weak Protectors","Striving for Allah"],easy:"Al-Ankabut opens: Do people think they will be left alone because they say We believe and will not be tested? Tests are inevitable. It uses the metaphor of a spider's web — looks strong but is the weakest of homes.",taf:"Those who rely on anything other than Allah are like spiders relying on their web. The Surah ends: Those who strive for Our cause — We will surely guide them to Our ways.",ayahAr:"وَالَّذِينَ جَاهَدُوا فِينَا لَنَهْدِيَنَّهُمْ سُبُلَنَا",ayahEn:"\"And those who strive for Our cause — We will surely guide them to Our ways.\"",ayahRef:"Al-Ankabut 29:69",ayahWhy:"Guidance is given to those who make the effort. Allah guides those who strive, even imperfectly, toward Him.",dua:"O Allah, I am striving. Even when I stumble, I keep coming back. Guide me to Your ways. Ameen."},
+  {n:30,en:"Ar-Rum",ar:"الروم",meaning:"The Romans",type:"Makki",ayahs:60,themes:["Victory after Defeat","Signs of Allah","Marriage","Fitra"],easy:"Ar-Rum opens with a remarkable prophecy: the Romans had just been defeated by the Persians and the Quran predicted the Romans would win again within 10 years — and they did.",taf:"The Surah lists the signs of Allah in creation: the creation of humans from dust, marriage as tranquility, diversity of languages and colours, sleep, lightning and rain. All are signs for people who reflect.",ayahAr:"وَمِنْ آيَاتِهِ أَنْ خَلَقَ لَكُم مِّنْ أَنفُسِكُمْ أَزْوَاجًا لِّتَسْكُنُوا إِلَيْهَا",ayahEn:"\"And of His signs is that He created for you from yourselves mates that you may find tranquility in them.\"",ayahRef:"Ar-Rum 30:21",ayahWhy:"Marriage is described as a sign of Allah — a source of tranquility, love, and mercy. It is not just a social contract; it is one of Allah's beautiful signs.",dua:"O Allah, bless my relationships with tranquility, love, and mercy. Let my bonds be signs of Your grace. Ameen."},
+  {n:31,en:"Luqman",ar:"لقمان",meaning:"Luqman the Wise",type:"Makki",ayahs:34,themes:["Luqman the Wise","Reflection","Faith"],easy:"Surah Luqman — Luqman the Wise — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Luqman — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Luqman guide my heart and transform my character. Ameen."},
+  {n:32,en:"As-Sajda",ar:"السجدة",meaning:"The Prostration",type:"Makki",ayahs:30,themes:["The Prostration","Reflection","Faith"],easy:"Surah As-Sajda — The Prostration — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"As-Sajda — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah As-Sajda guide my heart and transform my character. Ameen."},
+  {n:33,en:"Al-Ahzab",ar:"الأحزاب",meaning:"The Combined Forces",type:"Madani",ayahs:73,themes:["The Combined Forces","Reflection","Faith"],easy:"Surah Al-Ahzab — The Combined Forces — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Ahzab — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Ahzab guide my heart and transform my character. Ameen."},
+  {n:34,en:"Saba",ar:"سبأ",meaning:"Sheba",type:"Makki",ayahs:54,themes:["Sheba","Reflection","Faith"],easy:"Surah Saba — Sheba — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Saba — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Saba guide my heart and transform my character. Ameen."},
+  {n:35,en:"Fatir",ar:"فاطر",meaning:"The Originator",type:"Makki",ayahs:45,themes:["The Originator","Reflection","Faith"],easy:"Surah Fatir — The Originator — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Fatir — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Fatir guide my heart and transform my character. Ameen."},
+  {n:36,en:"Ya-Sin",ar:"يس",meaning:"Ya-Sin",type:"Makki",ayahs:83,themes:["Ya-Sin","Reflection","Faith"],easy:"Ya-Sin is called the heart of the Quran. It presents the most compelling arguments for resurrection through beautiful imagery of nature.",taf:"The Surah tells the story of a city that rejected its prophets except for one man who ran to defend them and was martyred. When he entered Jannah his only wish was that his people could see what he sees.",ayahAr:"إِنَّمَا أَمْرُهُ إِذَا أَرَادَ شَيْئًا أَن يَقُولَ لَهُ كُن فَيَكُونُ",ayahEn:"\"His command is only that He says to it: Be, and it is.\"",ayahRef:"Ya-Sin 36:82",ayahWhy:"Kun fayakun — Be, and it is. Allah needs nothing to create. No process, no tool, no time. Just His will.",dua:"O Allah, You said Be and the universe was. Say Be to my healing, my ease, and my success. Ameen."},
+  {n:37,en:"As-Saffat",ar:"الصافات",meaning:"Those Who Set the Ranks",type:"Makki",ayahs:182,themes:["Those Who Set the Ranks","Reflection","Faith"],easy:"Surah As-Saffat — Those Who Set the Ranks — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"As-Saffat — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah As-Saffat guide my heart and transform my character. Ameen."},
+  {n:38,en:"Sad",ar:"ص",meaning:"Sad",type:"Makki",ayahs:88,themes:["Sad","Reflection","Faith"],easy:"Surah Sad — Sad — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Sad — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Sad guide my heart and transform my character. Ameen."},
+  {n:39,en:"Az-Zumar",ar:"الزمر",meaning:"The Groups",type:"Makki",ayahs:75,themes:["The Groups","Reflection","Faith"],easy:"Surah Az-Zumar — The Groups — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Az-Zumar — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Az-Zumar guide my heart and transform my character. Ameen."},
+  {n:40,en:"Ghafir",ar:"غافر",meaning:"The Forgiver",type:"Makki",ayahs:85,themes:["The Forgiver","Reflection","Faith"],easy:"Surah Ghafir — The Forgiver — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Ghafir — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Ghafir guide my heart and transform my character. Ameen."},
+  {n:41,en:"Fussilat",ar:"فصلت",meaning:"Explained in Detail",type:"Makki",ayahs:54,themes:["Explained in Detail","Reflection","Faith"],easy:"Surah Fussilat — Explained in Detail — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Fussilat — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Fussilat guide my heart and transform my character. Ameen."},
+  {n:42,en:"Ash-Shura",ar:"الشورى",meaning:"The Consultation",type:"Makki",ayahs:53,themes:["The Consultation","Reflection","Faith"],easy:"Surah Ash-Shura — The Consultation — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Ash-Shura — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Ash-Shura guide my heart and transform my character. Ameen."},
+  {n:43,en:"Az-Zukhruf",ar:"الزخرف",meaning:"The Gold Adornments",type:"Makki",ayahs:89,themes:["The Gold Adornments","Reflection","Faith"],easy:"Surah Az-Zukhruf — The Gold Adornments — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Az-Zukhruf — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Az-Zukhruf guide my heart and transform my character. Ameen."},
+  {n:44,en:"Ad-Dukhan",ar:"الدخان",meaning:"The Smoke",type:"Makki",ayahs:59,themes:["The Smoke","Reflection","Faith"],easy:"Surah Ad-Dukhan — The Smoke — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Ad-Dukhan — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Ad-Dukhan guide my heart and transform my character. Ameen."},
+  {n:45,en:"Al-Jathiyah",ar:"الجاثية",meaning:"The Kneeling",type:"Makki",ayahs:37,themes:["The Kneeling","Reflection","Faith"],easy:"Surah Al-Jathiyah — The Kneeling — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Jathiyah — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Jathiyah guide my heart and transform my character. Ameen."},
+  {n:46,en:"Al-Ahqaf",ar:"الأحقاف",meaning:"The Wind-Curved Sand Dunes",type:"Makki",ayahs:35,themes:["The Wind-Curved Sand Dunes","Reflection","Faith"],easy:"Surah Al-Ahqaf — The Wind-Curved Sand Dunes — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Ahqaf — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Ahqaf guide my heart and transform my character. Ameen."},
+  {n:47,en:"Muhammad",ar:"محمد",meaning:"Muhammad",type:"Madani",ayahs:38,themes:["Muhammad","Reflection","Faith"],easy:"Surah Muhammad — Muhammad — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Muhammad — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Muhammad guide my heart and transform my character. Ameen."},
+  {n:48,en:"Al-Fath",ar:"الفتح",meaning:"The Conquest",type:"Madani",ayahs:29,themes:["The Conquest","Reflection","Faith"],easy:"Surah Al-Fath — The Conquest — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Fath — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Fath guide my heart and transform my character. Ameen."},
+  {n:49,en:"Al-Hujurat",ar:"الحجرات",meaning:"The Rooms",type:"Madani",ayahs:18,themes:["The Rooms","Reflection","Faith"],easy:"Surah Al-Hujurat — The Rooms — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Hujurat — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Hujurat guide my heart and transform my character. Ameen."},
+  {n:50,en:"Qaf",ar:"ق",meaning:"Qaf",type:"Makki",ayahs:45,themes:["Qaf","Reflection","Faith"],easy:"Surah Qaf — Qaf — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Qaf — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Qaf guide my heart and transform my character. Ameen."},
+  {n:51,en:"Adh-Dhariyat",ar:"الذاريات",meaning:"The Winnowing Winds",type:"Makki",ayahs:60,themes:["The Winnowing Winds","Reflection","Faith"],easy:"Surah Adh-Dhariyat — The Winnowing Winds — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Adh-Dhariyat — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Adh-Dhariyat guide my heart and transform my character. Ameen."},
+  {n:52,en:"At-Tur",ar:"الطور",meaning:"The Mount",type:"Makki",ayahs:49,themes:["The Mount","Reflection","Faith"],easy:"Surah At-Tur — The Mount — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"At-Tur — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah At-Tur guide my heart and transform my character. Ameen."},
+  {n:53,en:"An-Najm",ar:"النجم",meaning:"The Star",type:"Makki",ayahs:62,themes:["The Star","Reflection","Faith"],easy:"Surah An-Najm — The Star — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"An-Najm — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah An-Najm guide my heart and transform my character. Ameen."},
+  {n:54,en:"Al-Qamar",ar:"القمر",meaning:"The Moon",type:"Makki",ayahs:55,themes:["The Moon","Reflection","Faith"],easy:"Surah Al-Qamar — The Moon — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Qamar — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Qamar guide my heart and transform my character. Ameen."},
+  {n:55,en:"Ar-Rahman",ar:"الرحمن",meaning:"The Most Merciful",type:"Madani",ayahs:78,themes:["The Most Merciful","Reflection","Faith"],easy:"Ar-Rahman is one of the most beautiful Surahs. It describes the blessings of Allah and after each blessing asks: So which of the favors of your Lord would you deny? This question is repeated 31 times.",taf:"The Surah ends with an exquisite description of Jannah: gardens, springs, fruits, and beauty beyond imagination — all from Allah's pure generosity.",ayahAr:"فَبِأَيِّ آلَاءِ رَبِّكُمَا تُكَذِّبَانِ",ayahEn:"\"So which of the favors of your Lord would you deny?\"",ayahRef:"Ar-Rahman 55:13 — repeated 31 times",ayahWhy:"31 times — Allah asks this because He knows we forget. We are surrounded by blessings at every moment. This verse is a gentle repeated reminder to look up and be grateful.",dua:"O Allah, I cannot deny any of Your favors. Open my eyes to see them all. Ameen."},
+  {n:56,en:"Al-Waqiah",ar:"الواقعة",meaning:"The Inevitable",type:"Makki",ayahs:96,themes:["The Inevitable","Reflection","Faith"],easy:"Surah Al-Waqiah — The Inevitable — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Waqiah — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Waqiah guide my heart and transform my character. Ameen."},
+  {n:57,en:"Al-Hadid",ar:"الحديد",meaning:"The Iron",type:"Madani",ayahs:29,themes:["The Iron","Reflection","Faith"],easy:"Surah Al-Hadid — The Iron — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Hadid — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Hadid guide my heart and transform my character. Ameen."},
+  {n:58,en:"Al-Mujadila",ar:"المجادلة",meaning:"The Pleading Woman",type:"Madani",ayahs:22,themes:["The Pleading Woman","Reflection","Faith"],easy:"Surah Al-Mujadila — The Pleading Woman — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Mujadila — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Mujadila guide my heart and transform my character. Ameen."},
+  {n:59,en:"Al-Hashr",ar:"الحشر",meaning:"The Exile",type:"Madani",ayahs:24,themes:["The Exile","Reflection","Faith"],easy:"Surah Al-Hashr — The Exile — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Hashr — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Hashr guide my heart and transform my character. Ameen."},
+  {n:60,en:"Al-Mumtahana",ar:"الممتحنة",meaning:"The Woman to be Examined",type:"Madani",ayahs:13,themes:["The Woman to be Examined","Reflection","Faith"],easy:"Surah Al-Mumtahana — The Woman to be Examined — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Mumtahana — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Mumtahana guide my heart and transform my character. Ameen."},
+  {n:61,en:"As-Saf",ar:"الصف",meaning:"The Row",type:"Madani",ayahs:14,themes:["The Row","Reflection","Faith"],easy:"Surah As-Saf — The Row — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"As-Saf — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah As-Saf guide my heart and transform my character. Ameen."},
+  {n:62,en:"Al-Jumuah",ar:"الجمعة",meaning:"Friday",type:"Madani",ayahs:11,themes:["Friday","Reflection","Faith"],easy:"Surah Al-Jumuah — Friday — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Jumuah — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Jumuah guide my heart and transform my character. Ameen."},
+  {n:63,en:"Al-Munafiqun",ar:"المنافقون",meaning:"The Hypocrites",type:"Madani",ayahs:11,themes:["The Hypocrites","Reflection","Faith"],easy:"Surah Al-Munafiqun — The Hypocrites — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Munafiqun — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Munafiqun guide my heart and transform my character. Ameen."},
+  {n:64,en:"At-Taghabun",ar:"التغابن",meaning:"The Mutual Disillusion",type:"Madani",ayahs:18,themes:["The Mutual Disillusion","Reflection","Faith"],easy:"Surah At-Taghabun — The Mutual Disillusion — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"At-Taghabun — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah At-Taghabun guide my heart and transform my character. Ameen."},
+  {n:65,en:"At-Talaq",ar:"الطلاق",meaning:"The Divorce",type:"Madani",ayahs:12,themes:["The Divorce","Reflection","Faith"],easy:"Surah At-Talaq — The Divorce — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"At-Talaq — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah At-Talaq guide my heart and transform my character. Ameen."},
+  {n:66,en:"At-Tahrim",ar:"التحريم",meaning:"The Prohibition",type:"Madani",ayahs:12,themes:["The Prohibition","Reflection","Faith"],easy:"Surah At-Tahrim — The Prohibition — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"At-Tahrim — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah At-Tahrim guide my heart and transform my character. Ameen."},
+  {n:67,en:"Al-Mulk",ar:"الملك",meaning:"The Sovereignty",type:"Makki",ayahs:30,themes:["The Sovereignty","Reflection","Faith"],easy:"Surah Al-Mulk — The Sovereignty — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Mulk — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Mulk guide my heart and transform my character. Ameen."},
+  {n:68,en:"Al-Qalam",ar:"القلم",meaning:"The Pen",type:"Makki",ayahs:52,themes:["The Pen","Reflection","Faith"],easy:"Surah Al-Qalam — The Pen — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Qalam — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Qalam guide my heart and transform my character. Ameen."},
+  {n:69,en:"Al-Haqqah",ar:"الحاقة",meaning:"The Inevitable Reality",type:"Makki",ayahs:52,themes:["The Inevitable Reality","Reflection","Faith"],easy:"Surah Al-Haqqah — The Inevitable Reality — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Haqqah — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Haqqah guide my heart and transform my character. Ameen."},
+  {n:70,en:"Al-Maarij",ar:"المعارج",meaning:"The Ascending Stairways",type:"Makki",ayahs:44,themes:["The Ascending Stairways","Reflection","Faith"],easy:"Surah Al-Maarij — The Ascending Stairways — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Maarij — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Maarij guide my heart and transform my character. Ameen."},
+  {n:71,en:"Nuh",ar:"نوح",meaning:"Noah",type:"Makki",ayahs:28,themes:["Noah","Reflection","Faith"],easy:"Surah Nuh — Noah — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Nuh — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Nuh guide my heart and transform my character. Ameen."},
+  {n:72,en:"Al-Jinn",ar:"الجن",meaning:"The Jinn",type:"Makki",ayahs:28,themes:["The Jinn","Reflection","Faith"],easy:"Surah Al-Jinn — The Jinn — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Jinn — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Jinn guide my heart and transform my character. Ameen."},
+  {n:73,en:"Al-Muzzammil",ar:"المزمل",meaning:"The Enshrouded One",type:"Makki",ayahs:20,themes:["The Enshrouded One","Reflection","Faith"],easy:"Surah Al-Muzzammil — The Enshrouded One — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Muzzammil — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Muzzammil guide my heart and transform my character. Ameen."},
+  {n:74,en:"Al-Muddaththir",ar:"المدثر",meaning:"The Cloaked One",type:"Makki",ayahs:56,themes:["The Cloaked One","Reflection","Faith"],easy:"Surah Al-Muddaththir — The Cloaked One — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Muddaththir — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Muddaththir guide my heart and transform my character. Ameen."},
+  {n:75,en:"Al-Qiyamah",ar:"القيامة",meaning:"The Resurrection",type:"Makki",ayahs:40,themes:["The Resurrection","Reflection","Faith"],easy:"Surah Al-Qiyamah — The Resurrection — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Qiyamah — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Qiyamah guide my heart and transform my character. Ameen."},
+  {n:76,en:"Al-Insan",ar:"الإنسان",meaning:"The Human",type:"Madani",ayahs:31,themes:["The Human","Reflection","Faith"],easy:"Surah Al-Insan — The Human — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Insan — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Insan guide my heart and transform my character. Ameen."},
+  {n:77,en:"Al-Mursalat",ar:"المرسلات",meaning:"The Emissaries",type:"Makki",ayahs:50,themes:["The Emissaries","Reflection","Faith"],easy:"Surah Al-Mursalat — The Emissaries — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Mursalat — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Mursalat guide my heart and transform my character. Ameen."},
+  {n:78,en:"An-Naba",ar:"النبأ",meaning:"The Tidings",type:"Makki",ayahs:40,themes:["The Tidings","Reflection","Faith"],easy:"Surah An-Naba — The Tidings — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"An-Naba — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah An-Naba guide my heart and transform my character. Ameen."},
+  {n:79,en:"An-Naziat",ar:"النازعات",meaning:"Those Who Extract",type:"Makki",ayahs:46,themes:["Those Who Extract","Reflection","Faith"],easy:"Surah An-Naziat — Those Who Extract — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"An-Naziat — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah An-Naziat guide my heart and transform my character. Ameen."},
+  {n:80,en:"Abasa",ar:"عبس",meaning:"He Frowned",type:"Makki",ayahs:42,themes:["He Frowned","Reflection","Faith"],easy:"Surah Abasa — He Frowned — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Abasa — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Abasa guide my heart and transform my character. Ameen."},
+  {n:81,en:"At-Takwir",ar:"التكوير",meaning:"The Overthrowing",type:"Makki",ayahs:29,themes:["The Overthrowing","Reflection","Faith"],easy:"Surah At-Takwir — The Overthrowing — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"At-Takwir — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah At-Takwir guide my heart and transform my character. Ameen."},
+  {n:82,en:"Al-Infitar",ar:"الانفطار",meaning:"The Cleaving",type:"Makki",ayahs:19,themes:["The Cleaving","Reflection","Faith"],easy:"Surah Al-Infitar — The Cleaving — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Infitar — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Infitar guide my heart and transform my character. Ameen."},
+  {n:83,en:"Al-Mutaffifin",ar:"المطففين",meaning:"The Defrauders",type:"Makki",ayahs:36,themes:["The Defrauders","Reflection","Faith"],easy:"Surah Al-Mutaffifin — The Defrauders — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Mutaffifin — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Mutaffifin guide my heart and transform my character. Ameen."},
+  {n:84,en:"Al-Inshiqaq",ar:"الانشقاق",meaning:"The Splitting Open",type:"Makki",ayahs:25,themes:["The Splitting Open","Reflection","Faith"],easy:"Surah Al-Inshiqaq — The Splitting Open — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Inshiqaq — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Inshiqaq guide my heart and transform my character. Ameen."},
+  {n:85,en:"Al-Buruj",ar:"البروج",meaning:"The Mansions of the Stars",type:"Makki",ayahs:22,themes:["The Mansions of the Stars","Reflection","Faith"],easy:"Surah Al-Buruj — The Mansions of the Stars — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Buruj — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Buruj guide my heart and transform my character. Ameen."},
+  {n:86,en:"At-Tariq",ar:"الطارق",meaning:"The Night Visitant",type:"Makki",ayahs:17,themes:["The Night Visitant","Reflection","Faith"],easy:"Surah At-Tariq — The Night Visitant — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"At-Tariq — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah At-Tariq guide my heart and transform my character. Ameen."},
+  {n:87,en:"Al-Ala",ar:"الأعلى",meaning:"The Most High",type:"Makki",ayahs:19,themes:["The Most High","Reflection","Faith"],easy:"Surah Al-Ala — The Most High — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Ala — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Ala guide my heart and transform my character. Ameen."},
+  {n:88,en:"Al-Ghashiyah",ar:"الغاشية",meaning:"The Overwhelming",type:"Makki",ayahs:26,themes:["The Overwhelming","Reflection","Faith"],easy:"Surah Al-Ghashiyah — The Overwhelming — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Ghashiyah — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Ghashiyah guide my heart and transform my character. Ameen."},
+  {n:89,en:"Al-Fajr",ar:"الفجر",meaning:"The Dawn",type:"Makki",ayahs:30,themes:["The Dawn","Reflection","Faith"],easy:"Surah Al-Fajr — The Dawn — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Fajr — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Fajr guide my heart and transform my character. Ameen."},
+  {n:90,en:"Al-Balad",ar:"البلد",meaning:"The City",type:"Makki",ayahs:20,themes:["The City","Reflection","Faith"],easy:"Surah Al-Balad — The City — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Balad — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Balad guide my heart and transform my character. Ameen."},
+  {n:91,en:"Ash-Shams",ar:"الشمس",meaning:"The Sun",type:"Makki",ayahs:15,themes:["The Sun","Reflection","Faith"],easy:"Surah Ash-Shams — The Sun — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Ash-Shams — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Ash-Shams guide my heart and transform my character. Ameen."},
+  {n:92,en:"Al-Layl",ar:"الليل",meaning:"The Night",type:"Makki",ayahs:21,themes:["The Night","Reflection","Faith"],easy:"Surah Al-Layl — The Night — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Layl — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Layl guide my heart and transform my character. Ameen."},
+  {n:93,en:"Ad-Dhuha",ar:"الضحى",meaning:"The Morning Brightness",type:"Makki",ayahs:11,themes:["The Morning Brightness","Reflection","Faith"],easy:"Ad-Dhuha was revealed after a period of silence in revelation. The Prophet was deeply distressed thinking Allah had abandoned him. This Surah is Allah's tender response.",taf:"Allah reminds the Prophet of His blessings and promises the future will be better than the past. He found you orphaned and gave you shelter, found you lost and gave you guidance.",ayahAr:"مَا وَدَّعَكَ رَبُّكَ وَمَا قَلَىٰ",ayahEn:"\"Your Lord has not taken leave of you, nor has He forgotten you.\"",ayahRef:"Ad-Dhuha 93:3",ayahWhy:"This is the Surah for dark periods. When you feel Allah has forgotten you — read Ad-Dhuha. He has not left you. The silence is not rejection. The relief will come.",dua:"O Allah, when I feel You are far, remind me of Surah Ad-Dhuha. You have not forgotten me. Ameen."},
+  {n:94,en:"Ash-Sharh",ar:"الشرح",meaning:"The Relief",type:"Makki",ayahs:8,themes:["The Relief","Reflection","Faith"],easy:"Ash-Sharh is one of the most comforting Surahs. It was revealed to comfort the Prophet and it comforts every believer since. The promise: with every hardship comes ease.",taf:"The verse with hardship comes ease is repeated twice. In Arabic hardship is definite meaning one specific hardship while ease is indefinite meaning multiple eases come with one hardship.",ayahAr:"فَإِنَّ مَعَ الْعُسْرِ يُسْرًا ۝ إِنَّ مَعَ الْعُسْرِ يُسْرًا",ayahEn:"\"For indeed, with hardship will be ease. Indeed, with hardship will be ease.\"",ayahRef:"Ash-Sharh 94:5-6",ayahWhy:"With ONE hardship come MULTIPLE eases. The math of Allah's mercy is always in our favor. This verse has carried millions of believers through their darkest moments.",dua:"O Allah, expand my chest, relieve my burden, and ease my affairs. I know that with this hardship comes ease. Ameen."},
+  {n:95,en:"At-Tin",ar:"التين",meaning:"The Fig",type:"Makki",ayahs:8,themes:["The Fig","Reflection","Faith"],easy:"Surah At-Tin — The Fig — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"At-Tin — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah At-Tin guide my heart and transform my character. Ameen."},
+  {n:96,en:"Al-Alaq",ar:"العلق",meaning:"The Clot",type:"Makki",ayahs:19,themes:["The Clot","Reflection","Faith"],easy:"Surah Al-Alaq — The Clot — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Alaq — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Alaq guide my heart and transform my character. Ameen."},
+  {n:97,en:"Al-Qadr",ar:"القدر",meaning:"The Power",type:"Makki",ayahs:5,themes:["The Power","Reflection","Faith"],easy:"Al-Qadr is one of the most treasured Surahs. It tells us about Laylat al-Qadr — the Night of Power — a single night better than 1000 months of worship.",taf:"The night the Quran was sent down is still honored every Ramadan. On this night the angels bring decrees from Allah. Worshipping on this one night equals 83 years of worship.",ayahAr:"لَيْلَةُ الْقَدْرِ خَيْرٌ مِّنْ أَلْفِ شَهْرٍ",ayahEn:"\"The Night of Power is better than a thousand months.\"",ayahRef:"Al-Qadr 97:3",ayahWhy:"One night. Better than 83 years. Allah gives us a chance every Ramadan to compress a lifetime of worship into a single night. Do not let it pass.",dua:"O Allah, grant me Laylat al-Qadr. Let me find it and spend it in worship. Ameen."},
+  {n:98,en:"Al-Bayyinah",ar:"البينة",meaning:"The Clear Proof",type:"Madani",ayahs:8,themes:["The Clear Proof","Reflection","Faith"],easy:"Surah Al-Bayyinah — The Clear Proof — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Bayyinah — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Bayyinah guide my heart and transform my character. Ameen."},
+  {n:99,en:"Az-Zalzalah",ar:"الزلزلة",meaning:"The Earthquake",type:"Madani",ayahs:8,themes:["The Earthquake","Reflection","Faith"],easy:"Surah Az-Zalzalah — The Earthquake — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Az-Zalzalah — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Az-Zalzalah guide my heart and transform my character. Ameen."},
+  {n:100,en:"Al-Adiyat",ar:"العاديات",meaning:"The Racers",type:"Makki",ayahs:11,themes:["The Racers","Reflection","Faith"],easy:"Surah Al-Adiyat — The Racers — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Adiyat — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Adiyat guide my heart and transform my character. Ameen."},
+  {n:101,en:"Al-Qariah",ar:"القارعة",meaning:"The Striking Calamity",type:"Makki",ayahs:11,themes:["The Striking Calamity","Reflection","Faith"],easy:"Surah Al-Qariah — The Striking Calamity — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Qariah — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Qariah guide my heart and transform my character. Ameen."},
+  {n:102,en:"At-Takathur",ar:"التكاثر",meaning:"The Rivalry",type:"Makki",ayahs:8,themes:["The Rivalry","Reflection","Faith"],easy:"Surah At-Takathur — The Rivalry — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"At-Takathur — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah At-Takathur guide my heart and transform my character. Ameen."},
+  {n:103,en:"Al-Asr",ar:"العصر",meaning:"The Declining Day",type:"Makki",ayahs:3,themes:["The Declining Day","Reflection","Faith"],easy:"Surah Al-Asr — The Declining Day — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Asr — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Asr guide my heart and transform my character. Ameen."},
+  {n:104,en:"Al-Humazah",ar:"الهمزة",meaning:"The Backbiter",type:"Makki",ayahs:9,themes:["The Backbiter","Reflection","Faith"],easy:"Surah Al-Humazah — The Backbiter — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Humazah — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Humazah guide my heart and transform my character. Ameen."},
+  {n:105,en:"Al-Fil",ar:"الفيل",meaning:"The Elephant",type:"Makki",ayahs:5,themes:["The Elephant","Reflection","Faith"],easy:"Surah Al-Fil — The Elephant — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Fil — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Fil guide my heart and transform my character. Ameen."},
+  {n:106,en:"Quraysh",ar:"قريش",meaning:"Quraysh",type:"Makki",ayahs:4,themes:["Quraysh","Reflection","Faith"],easy:"Surah Quraysh — Quraysh — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Quraysh — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Quraysh guide my heart and transform my character. Ameen."},
+  {n:107,en:"Al-Maun",ar:"الماعون",meaning:"The Small Kindnesses",type:"Makki",ayahs:7,themes:["The Small Kindnesses","Reflection","Faith"],easy:"Surah Al-Maun — The Small Kindnesses — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Maun — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Maun guide my heart and transform my character. Ameen."},
+  {n:108,en:"Al-Kawthar",ar:"الكوثر",meaning:"The Abundant Good",type:"Makki",ayahs:3,themes:["The Abundant Good","Reflection","Faith"],easy:"Surah Al-Kawthar — The Abundant Good — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Kawthar — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Kawthar guide my heart and transform my character. Ameen."},
+  {n:109,en:"Al-Kafirun",ar:"الكافرون",meaning:"The Disbelievers",type:"Makki",ayahs:6,themes:["The Disbelievers","Reflection","Faith"],easy:"Surah Al-Kafirun — The Disbelievers — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Kafirun — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Kafirun guide my heart and transform my character. Ameen."},
+  {n:110,en:"An-Nasr",ar:"النصر",meaning:"The Divine Support",type:"Madani",ayahs:3,themes:["The Divine Support","Reflection","Faith"],easy:"Surah An-Nasr — The Divine Support — is a beautiful Surah revealed in Madani. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Madani and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"An-Nasr — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah An-Nasr guide my heart and transform my character. Ameen."},
+  {n:111,en:"Al-Masad",ar:"المسد",meaning:"The Palm Fiber",type:"Makki",ayahs:5,themes:["The Palm Fiber","Reflection","Faith"],easy:"Surah Al-Masad — The Palm Fiber — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Masad — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Masad guide my heart and transform my character. Ameen."},
+  {n:112,en:"Al-Ikhlas",ar:"الإخلاص",meaning:"The Sincerity",type:"Makki",ayahs:4,themes:["The Sincerity","Reflection","Faith"],easy:"Al-Ikhlas is equivalent to one-third of the Quran in reward because it describes the pure nature of Allah in four perfect sentences.",taf:"In these four verses every false conception of Allah is addressed: He is One — no partners, Eternal — no needs, does not have children, was not born, and nothing is comparable to Him.",ayahAr:"قُلْ هُوَ اللَّهُ أَحَدٌ ۝ اللَّهُ الصَّمَدُ",ayahEn:"\"Say: He is Allah, One. Allah, the Eternal.\"",ayahRef:"Al-Ikhlas 112:1-2",ayahWhy:"The most complete description of Allah in the Quran in four sentences. Whoever truly understands these four sentences understands Tawhid.",dua:"O Allah, Al-Ahad, As-Samad. You are One and You are Eternal. Let my heart be pure in its belief in You. Ameen."},
+  {n:113,en:"Al-Falaq",ar:"الفلق",meaning:"The Daybreak",type:"Makki",ayahs:5,themes:["The Daybreak","Reflection","Faith"],easy:"Surah Al-Falaq — The Daybreak — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"Al-Falaq — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah Al-Falaq guide my heart and transform my character. Ameen."},
+  {n:114,en:"An-Nas",ar:"الناس",meaning:"The Mankind",type:"Makki",ayahs:6,themes:["The Mankind","Reflection","Faith"],easy:"Surah An-Nas — The Mankind — is a beautiful Surah revealed in Makki. It carries deep wisdom and lessons for every believer.",taf:"This Surah was revealed in Makki and contains important lessons about faith, worship, and our relationship with Allah. Reflect deeply on its verses.",ayahAr:"اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",ayahEn:"\"Guide us to the straight path.\"",ayahRef:"An-Nas — a verse of guidance",ayahWhy:"Every verse of the Quran is a guiding light. Sit with this Surah and let it speak to your heart.",dua:"O Allah, let the lessons of Surah An-Nas guide my heart and transform my character. Ameen."},
+];
+
+function buildSurahList(){
+  var con = document.getElementById('surah-list-con');
+  if(!con) return;
+  con.innerHTML = SURAHS.map(function(s){
+    return '<div class="sli" onclick="openSurah('+s.n+')">'
+      +'<div class="sli-n">'+s.n+'</div>'
+      +'<div class="sli-ar">'+s.ar+'</div>'
+      +'<div class="sli-inf">'
+        +'<div class="sli-nm">'+s.en+'</div>'
+        +'<div class="sli-mt">'+s.meaning+' &middot; '+s.ayahs+' verses</div>'
+      +'</div>'
+      +'<span class="sli-tg '+(s.type==='Makki'?'tgm':'tgmd')+'">'+s.type+'</span>'
+      +'</div>';
+  }).join('');
+}
+
+function openSurah(n){
+  var s = SURAHS.find(function(x){ return x.n===n; });
+  if(!s) return;
+  document.getElementById('surah-list-v').style.display='none';
+  var dv = document.getElementById('surah-detail-v');
+  dv.style.display='block';
+
+  var themes = s.themes.map(function(t){ return '<span class="tchip">'+t+'</span>'; }).join('');
+
+  var prevBtn = s.n > 1
+    ? '<button class="surah-nav-btn" onclick="openSurah('+(s.n-1)+')">&#8592; Surah '+(s.n-1)+'</button>'
+    : '<span></span>';
+  var nextBtn = s.n < 114
+    ? '<button class="surah-nav-btn surah-nav-next" onclick="openSurah('+(s.n+1)+')">Surah '+(s.n+1)+' &#8594;</button>'
+    : '<span></span>';
+
+  document.getElementById('surah-detail-con').innerHTML =
+    '<div class="sh-hero">'
+      +'<div class="sh-n">Surah '+s.n+' of 114</div>'
+      +'<div class="sh-ar">'+s.ar+'</div>'
+      +'<div class="sh-en">'+s.en+'</div>'
+      +'<div class="sh-mn">&ldquo;'+s.meaning+'&rdquo;</div>'
+      +'<div class="pills">'
+        +'<span class="pill"><span>'+s.type+'</span></span>'
+        +'<span class="pill"><span>'+s.ayahs+'</span> Ayahs</span>'
+      +'</div>'
+      +'<div class="twrap">'+themes+'</div>'
+    +'</div>'
+
+    +'<div class="card ca">'
+      +'<div class="clbl">Easy Explanation</div>'
+      +'<div class="cttl">Understanding '+s.en+'</div>'
+      +'<div class="cbody"><p>'+s.easy+'</p></div>'
+    +'</div>'
+
+    +'<div class="card cp">'
+      +'<div class="clbl">Tafsir</div>'
+      +'<div class="cttl">Beginner Tafsir</div>'
+      +'<div class="cbody"><p>'+s.taf+'</p></div>'
+    +'</div>'
+
+    +'<div class="ay-card">'
+      +'<div class="clbl" style="text-align:center;margin-bottom:10px">&#11088; Favourite Ayah</div>'
+      +'<div class="ay-ar">'+s.ayahAr+'</div>'
+      +'<div class="ay-ln"></div>'
+      +'<div class="ay-en">'+s.ayahEn+'</div>'
+      +'<div class="ay-ref">'+s.ayahRef+'</div>'
+      +'<div class="ay-why">'+s.ayahWhy+'</div>'
+    +'</div>'
+
+    +'<div class="dua-card">'
+      +'<div class="dua-op">&#129330; Dua Inspired by '+s.en+'</div>'
+      +'<div class="dua-txt">'+s.dua+'</div>'
+    +'</div>'
+
+    +'<div class="card">'
+      +'<div class="clbl">Reflection</div>'
+      +'<div class="cttl">Journal Prompts &#9997;&#65039;</div>'
+      +'<ul class="refl-list">'
+        +'<li><div class="rdot"></div>What lesson from '+s.en+' touched my heart most?</li>'
+        +'<li><div class="rdot"></div>How can I apply one teaching from this Surah in my life this week?</li>'
+        +'<li><div class="rdot"></div>What does this Surah teach me about the character of Allah?</li>'
+        +'<li><div class="rdot"></div>Which verse stood out to me and why?</li>'
+        +'<li><div class="rdot"></div>What would change in my daily life if I truly lived this Surah?</li>'
+      +'</ul>'
+    +'</div>'
+
+    +'<div class="card">'
+      +'<div class="clbl">My Notes</div>'
+      +'<div class="cttl">Personal Reflections on '+s.en+'</div>'
+      +'<textarea class="notes-a" placeholder="Write your thoughts, reflections, or what moved your heart&hellip;"></textarea>'
+    +'</div>'
+
+    +'<div class="surah-nav">'+prevBtn+nextBtn+'</div>'
+    +'<div class="pfoot" style="margin-top:28px">&#10022; '+s.ar+' &mdash; &ldquo;'+s.meaning+'&rdquo; &#10022;</div>';
+
+  dv.scrollIntoView({behavior:'smooth'});
+}
+
+function backToList(){
+  document.getElementById('surah-detail-v').style.display='none';
+  document.getElementById('surah-list-v').style.display='block';
+  window.scrollTo(0,0);
+}
+
+function buildHabitGrid(){
+  var g = document.getElementById('habit-grid');
+  if(!g) return;
+  for(var i=1;i<=30;i++){
+    var d = document.createElement('div');
+    d.className='tday'; d.textContent=i;
+    d.onclick=(function(el){ return function(){ el.classList.toggle('done'); }; })(d);
+    g.appendChild(d);
+  }
+}
+
+function buildMemoGrid(){
+  var g = document.getElementById('memo-grid');
+  if(!g) return;
+  SURAHS.forEach(function(s){
+    var d = document.createElement('div');
+    d.className='sbox';
+    d.innerHTML='<span class="sboxn">'+s.n+'</span>'+s.en.split(' ')[0].substring(0,6);
+    var state=0;
+    d.onclick=function(){
+      state=(state+1)%3;
+      d.className='sbox'+(state===1?' read':state===2?' mem':'');
+    };
+    g.appendChild(d);
+  });
+}
+
+function buildGoals(){
+  [['goals-st','var(--pink)'],['goals-lt','var(--gold)']].forEach(function(pair){
+    var con = document.getElementById(pair[0]);
+    if(!con) return;
+    for(var i=1;i<=5;i++){
+      var row = document.createElement('div');
+      row.style.cssText='display:flex;gap:9px;align-items:center';
+      row.innerHTML='<span style="color:'+pair[1]+';font-family:Cormorant Garamond,serif;font-size:19px">'+i+'.</span>'
+        +'<input type="text" placeholder="Add a goal…" style="flex:1;border:none;border-bottom:1px solid var(--sand);background:transparent;font-family:Cormorant Garamond,serif;font-size:14px;color:var(--ink);padding:4px 0;outline:none">';
+      con.appendChild(row);
+    }
+  });
+}
+
+function buildRamadan(){
+  var con = document.getElementById('ram-days-con');
+  if(!con) return;
+  for(var i=1;i<=30;i++){
+    var icons = ['&#127769;','&#11088;','&#127800;','&#128214;','&#10024;'];
+    con.innerHTML += '<div class="ram-c">'
+      +'<div class="ram-t">Day '+i+' '+icons[(i-1)%5]+'</div>'
+      +'<div class="ram-g">'
+        +'<div class="ram-f"><label>Surah Read</label><input type="text" placeholder="Surah name…"></div>'
+        +'<div class="ram-f"><label>Pages Read</label><input type="text" placeholder="Number…"></div>'
+      +'</div>'
+      +'<div class="ram-f" style="margin-top:10px">'
+        +'<label>Today's Reflection</label>'
+        +'<input type="text" placeholder="What touched my heart today…" style="width:100%;border:none;border-bottom:1px solid var(--sand);background:transparent;font-family:Cormorant Garamond,serif;font-size:13px;color:var(--ink);padding:3px 0;outline:none">'
+      +'</div>'
+    +'</div>';
+  }
+}
+
+// ── INIT ──
+document.querySelectorAll('.page').forEach(function(p){ p.style.display='none'; });
+document.getElementById('page-cover').style.display='block';
+visited['cover'] = true;
+buildSurahList();
+buildHabitGrid();
+buildMemoGrid();
+buildGoals();
+buildRamadan();
+updateProgress();
+</script>
+</body>
+</html>
