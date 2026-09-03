@@ -226,6 +226,105 @@ async function sendTestChallenge(kind) {
         throw new Error(data.detail || data.error || "The test challenge could not be sent.");
     }
 }
+// ===== Prayer Times & Qibla =====
+//
+// Prayer times come from the Al Adhan API (api.aladhan.com — free, no key,
+// same pattern as the live Quran text). Qibla direction is computed entirely
+// client-side with plain geometry, so it works offline once your location is
+// known — no API call needed for that part.
+const KAABA_LAT = 21.4225;
+const KAABA_LNG = 39.8262;
+const PRAYER_CALC_METHODS = [
+    { id: 3, label: "Muslim World League" },
+    { id: 2, label: "Islamic Society of North America (ISNA)" },
+    { id: 4, label: "Umm Al-Qura, Makkah" },
+    { id: 5, label: "Egyptian General Authority" },
+    { id: 13, label: "Diyanet, Turkey" },
+];
+// Standard great-circle initial bearing formula, giving the compass bearing
+// (0-360°, clockwise from true North) from a point to the Kaaba.
+function computeQiblaBearing(lat, lng) {
+    const toRad = (d) => (d * Math.PI) / 180;
+    const toDeg = (r) => (r * 180) / Math.PI;
+    const phi1 = toRad(lat);
+    const lambda1 = toRad(lng);
+    const phi2 = toRad(KAABA_LAT);
+    const lambda2 = toRad(KAABA_LNG);
+    const dLambda = lambda2 - lambda1;
+    const y = Math.sin(dLambda) * Math.cos(phi2);
+    const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLambda);
+    const theta = Math.atan2(y, x);
+    return (toDeg(theta) + 360) % 360;
+}
+function getBrowserLocation() {
+    return new Promise((resolve, reject) => {
+        if (!("geolocation" in navigator)) {
+            reject(new Error("This browser doesn't support location."));
+            return;
+        }
+        navigator.geolocation.getCurrentPosition((pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }), (err) => reject(new Error(err && err.message ? err.message : "Could not get your location.")), { enableHighAccuracy: false, timeout: 15000, maximumAge: 10 * 60 * 1000 });
+    });
+}
+// Best-effort human-readable place name for the location, purely cosmetic —
+// if this fails or is slow, the app just shows coordinates instead.
+async function reverseGeocode(lat, lng) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=10`, { signal: controller.signal });
+        if (!res.ok)
+            return null;
+        const data = await res.json();
+        const a = data.address || {};
+        return a.city || a.town || a.village || a.county || a.state || data.display_name || null;
+    }
+    catch (err) {
+        return null;
+    }
+    finally {
+        clearTimeout(timeoutId);
+    }
+}
+function pad2(n) {
+    return String(n).padStart(2, "0");
+}
+async function fetchPrayerTimesOnline(lat, lng, method, timezone) {
+    const controller = new AbortController();
+    const timeoutMs = 12000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const today = new Date();
+    const dateStr = `${pad2(today.getDate())}-${pad2(today.getMonth() + 1)}-${today.getFullYear()}`;
+    let res;
+    try {
+        const url = `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=${method}&timezonestring=${encodeURIComponent(timezone || "UTC")}`;
+        res = await fetch(url, { signal: controller.signal });
+    }
+    catch (err) {
+        if (err && err.name === "AbortError") {
+            throw new Error(`Timed out after ${timeoutMs / 1000}s waiting for the prayer times service.`);
+        }
+        throw err;
+    }
+    finally {
+        clearTimeout(timeoutId);
+    }
+    if (!res.ok)
+        throw new Error("Network response was not ok (" + res.status + ")");
+    const json = await res.json();
+    if (json.code !== 200 || !json.data)
+        throw new Error("Unexpected response from the prayer times service.");
+    return json.data;
+}
+const PRAYER_ORDER = ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"];
+const PRAYER_LABELS = { Fajr: "Fajr", Sunrise: "Sunrise", Dhuhr: "Dhuhr", Asr: "Asr", Maghrib: "Maghrib", Isha: "Isha" };
+const PRAYER_ICONS = { Fajr: "🌤️", Sunrise: "🌅", Dhuhr: "☀️", Asr: "⛅", Maghrib: "🌇", Isha: "🌙" };
+// "14:05" -> Date object for today at that local time
+function timeStringToDate(hhmm, base) {
+    const [h, m] = hhmm.split(":").map((n) => parseInt(n, 10));
+    const d = new Date(base);
+    d.setHours(h, m, 0, 0);
+    return d;
+}
 // Longest run of consecutive checked days ending today or yesterday
 function currentStreak(tracker) {
     let streak = 0;
@@ -309,12 +408,20 @@ const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Poppins:wght@300;400;500&family=Amiri:ital,wght@0,400;0,700;1,400&display=swap');
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  
+  html { -webkit-text-size-adjust: 100%; }
+  html, body { overflow-x: hidden; width: 100%; }
+
   body {
     background: #FFF8F0;
     font-family: 'Poppins', sans-serif;
     color: #6B5B4E;
     min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  button { touch-action: manipulation; }
+  @media (max-width: 480px) {
+    body { font-size: 15px; }
   }
 
   ::-webkit-scrollbar { width: 6px; }
@@ -345,7 +452,7 @@ const globalStyles = `
     transform-origin: left center;
   }
   @supports (height: 100dvh) {
-    .book-page { height: 100%; }
+    .book-page { max-height: 70dvh !important; }
   }
   @keyframes pinGlow {
     0%, 100% { box-shadow: 0 6px 18px rgba(107,91,78,0.35); }
@@ -572,18 +679,8 @@ const DHIKR_LIST = [
 // everything else is fetched live and accurately from the Al Quran Cloud API
 // (api.alquran.cloud — free, no key, Uthmani script + Sahih International translation)
 // the first time you open that page, then cached in this browser for next time.
-const AYAHS_PER_BOOK_PAGE = 10;
-const BOOK_PAGES = [
-    { isCover: true },
-    ...ALL_SURAHS.flatMap(s => {
-        const totalPages = Math.max(1, Math.ceil(s.ayahs / AYAHS_PER_BOOK_PAGE));
-        return Array.from({ length: totalPages }, (_, i) => ({
-            surahNumber: s.number,
-            pageIndex: i,
-            totalPages,
-        }));
-    }),
-];
+const BOOK_SURAH_NUMBERS = Array.from({ length: 114 }, (_, i) => i + 1);
+const BOOK_PAGES = [{ isCover: true }, ...BOOK_SURAH_NUMBERS.map(n => ({ surahNumber: n }))];
 async function fetchFullSurahOnline(number) {
     const controller = new AbortController();
     const timeoutMs = 12000;
@@ -809,6 +906,16 @@ function QuranJournal() {
     const [challengeError, setChallengeError] = useState("");
     const [testChallengeStatus, setTestChallengeStatus] = useState("idle");
     const [challengeLog, setChallengeLog] = useState({}); // { "YYYY-MM-DD": true } — for the local streak
+    const [prayerSubView, setPrayerSubView] = useState("times"); // "times" | "qibla"
+    const [prayerLocation, setPrayerLocation] = useState(null); // { lat, lng, label }
+    const [prayerMethod, setPrayerMethod] = useState(3);
+    const [prayerData, setPrayerData] = useState(null); // Aladhan's { timings, date, meta }
+    const [prayerFetchedFor, setPrayerFetchedFor] = useState(null); // "YYYY-MM-DD:lat:lng:method"
+    const [prayerStatus, setPrayerStatus] = useState("idle"); // idle | locating | loading | error
+    const [prayerError, setPrayerError] = useState("");
+    const [now, setNow] = useState(new Date());
+    const [compassHeading, setCompassHeading] = useState(null); // device heading in degrees, or null if unavailable
+    const [compassStatus, setCompassStatus] = useState("idle"); // idle | requesting | active | unsupported | denied
     const [bookOpen, setBookOpen] = useState(false);
     const [bookPageIdx, setBookPageIdx] = useState(0);
     const [bookFlipping, setBookFlipping] = useState(false);
@@ -835,6 +942,14 @@ function QuranJournal() {
             if (saved.challengePrefs)
                 setChallengePrefs(saved.challengePrefs);
             setChallengeLog(saved.challengeLog || {});
+            if (saved.prayerLocation)
+                setPrayerLocation(saved.prayerLocation);
+            if (saved.prayerMethod)
+                setPrayerMethod(saved.prayerMethod);
+            if (saved.prayerData)
+                setPrayerData(saved.prayerData);
+            if (saved.prayerFetchedFor)
+                setPrayerFetchedFor(saved.prayerFetchedFor);
         }
         setHasLoaded(true);
     }, []);
@@ -847,6 +962,13 @@ function QuranJournal() {
         }
         catch (err) { /* ignore */ }
     }, []);
+    // Keep "now" fresh for the next-prayer countdown, only while the prayers page is open.
+    useEffect(() => {
+        if (page !== "prayers")
+            return;
+        const id = setInterval(() => setNow(new Date()), 1000);
+        return () => clearInterval(id);
+    }, [page]);
     // Autosave (debounced) whenever journal data changes, after the initial load.
     useEffect(() => {
         if (!hasLoaded)
@@ -855,11 +977,11 @@ function QuranJournal() {
         if (saveTimer.current)
             clearTimeout(saveTimer.current);
         saveTimer.current = setTimeout(() => {
-            saveJournalState({ goals, tracker, favorites, notes, lastRead, dhikrCounts, fullTextCache, reminderPrefs, challengePrefs, challengeLog });
+            saveJournalState({ goals, tracker, favorites, notes, lastRead, dhikrCounts, fullTextCache, reminderPrefs, challengePrefs, challengeLog, prayerLocation, prayerMethod, prayerData, prayerFetchedFor });
             setSaveStatus("saved");
         }, 500);
         return () => clearTimeout(saveTimer.current);
-    }, [goals, tracker, favorites, notes, lastRead, dhikrCounts, fullTextCache, reminderPrefs, challengePrefs, challengeLog, hasLoaded]);
+    }, [goals, tracker, favorites, notes, lastRead, dhikrCounts, fullTextCache, reminderPrefs, challengePrefs, challengeLog, prayerLocation, prayerMethod, prayerData, prayerFetchedFor, hasLoaded]);
     const filtered = ALL_SURAHS.filter(s => {
         const q = search.toLowerCase();
         const matchSearch = s.name.toLowerCase().includes(q) || s.arabic.includes(q) || String(s.number).includes(q) || s.meaning.toLowerCase().includes(q);
@@ -1059,6 +1181,99 @@ function QuranJournal() {
     };
     const challengeStreak = currentStreak(challengeLog);
     const challengeDoneToday = !!challengeLog[getDateKey(new Date())];
+    // ---- Prayer Times & Qibla ----
+    const detectLocation = async () => {
+        setPrayerStatus("locating");
+        setPrayerError("");
+        try {
+            const loc = await getBrowserLocation();
+            const label = await reverseGeocode(loc.lat, loc.lng);
+            const nextLocation = { lat: loc.lat, lng: loc.lng, label: label || null };
+            setPrayerLocation(nextLocation);
+            setPrayerStatus("idle");
+        }
+        catch (err) {
+            setPrayerError(err && err.message ? err.message : String(err));
+            setPrayerStatus("error");
+        }
+    };
+    const loadPrayerTimes = async (loc, method) => {
+        setPrayerStatus("loading");
+        setPrayerError("");
+        try {
+            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+            const data = await fetchPrayerTimesOnline(loc.lat, loc.lng, method, timezone);
+            setPrayerData(data);
+            setPrayerFetchedFor(`${getDateKey(new Date())}:${loc.lat.toFixed(3)}:${loc.lng.toFixed(3)}:${method}`);
+            setPrayerStatus("idle");
+        }
+        catch (err) {
+            setPrayerError(err && err.message ? err.message : String(err));
+            setPrayerStatus("error");
+        }
+    };
+    // Whenever we have a location and today's data isn't already cached for it, fetch it.
+    useEffect(() => {
+        if (!hasLoaded || !prayerLocation)
+            return;
+        const key = `${getDateKey(new Date())}:${prayerLocation.lat.toFixed(3)}:${prayerLocation.lng.toFixed(3)}:${prayerMethod}`;
+        if (prayerFetchedFor === key)
+            return;
+        if (prayerStatus === "loading" || prayerStatus === "locating")
+            return;
+        loadPrayerTimes(prayerLocation, prayerMethod);
+    }, [hasLoaded, prayerLocation, prayerMethod]);
+    const qiblaBearing = prayerLocation ? computeQiblaBearing(prayerLocation.lat, prayerLocation.lng) : null;
+    const enableCompass = async () => {
+        setCompassStatus("requesting");
+        try {
+            if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
+                const result = await DeviceOrientationEvent.requestPermission();
+                if (result !== "granted") {
+                    setCompassStatus("denied");
+                    return;
+                }
+            }
+            const handler = (e) => {
+                // iOS Safari gives a direct, reliable compass heading (0 = North).
+                if (typeof e.webkitCompassHeading === "number") {
+                    setCompassHeading(e.webkitCompassHeading);
+                    return;
+                }
+                // Other browsers: best-effort from the standard alpha value.
+                if (typeof e.alpha === "number") {
+                    setCompassHeading((360 - e.alpha) % 360);
+                }
+            };
+            window.addEventListener("deviceorientation", handler);
+            setCompassStatus("active");
+        }
+        catch (err) {
+            setCompassStatus("unsupported");
+        }
+    };
+    // Figure out which prayer is "next" and how long until it starts, from the fetched timings.
+    const nextPrayerInfo = (() => {
+        if (!prayerData || !prayerData.timings)
+            return null;
+        const timings = prayerData.timings;
+        const candidates = PRAYER_ORDER
+            .filter((name) => name !== "Sunrise")
+            .map((name) => ({ name, time: timeStringToDate((timings[name] || "").slice(0, 5), now) }))
+            .filter((c) => !isNaN(c.time.getTime()));
+        let next = candidates.find((c) => c.time.getTime() > now.getTime());
+        if (!next && candidates.length) {
+            // Past Isha — next prayer is tomorrow's Fajr.
+            next = { ...candidates[0], time: new Date(candidates[0].time.getTime() + 24 * 60 * 60 * 1000) };
+        }
+        if (!next)
+            return null;
+        const diffMs = Math.max(0, next.time.getTime() - now.getTime());
+        const h = Math.floor(diffMs / 3600000);
+        const m = Math.floor((diffMs % 3600000) / 60000);
+        const s = Math.floor((diffMs % 60000) / 1000);
+        return { name: next.name, time: next.time, countdown: `${pad2(h)}:${pad2(m)}:${pad2(s)}` };
+    })();
     const dhikrKey = (id) => `${todayKey}:${id}`;
     const getDhikrCount = (id) => dhikrCounts[dhikrKey(id)] || 0;
     const incrementDhikr = (id) => {
@@ -1069,11 +1284,6 @@ function QuranJournal() {
     };
     const todaysDhikrTotal = Object.keys(dhikrCounts).filter(k => k.startsWith(todayKey + ":")).reduce((sum, k) => sum + dhikrCounts[k], 0);
     const openBook = () => { setBookPageIdx(0); setBookOpen(true); };
-    const openBookAtSurah = (num) => {
-        const idx = BOOK_PAGES.findIndex(p => !p.isCover && p.surahNumber === num);
-        setBookPageIdx(idx === -1 ? 0 : idx);
-        setBookOpen(true);
-    };
     const turnBookPage = (delta) => {
         setBookPageIdx(idx => Math.max(0, Math.min(BOOK_PAGES.length - 1, idx + delta)));
         setBookFlipping(f => !f); // toggles the key parity so the CSS flip animation replays
@@ -1106,6 +1316,18 @@ function QuranJournal() {
             return;
         loadSurahText(num);
     }, [bookOpen, bookPageIdx]);
+    // Whenever the surah journal page's "Read Surah" tab is open on a surah we don't
+    // already have (offline or cached), fetch its complete text the same way the book does.
+    useEffect(() => {
+        if (activeTab !== "read" || !selectedSurah)
+            return;
+        const num = selectedSurah.number;
+        if (FULL_SURAH_TEXT[num] || fullTextCache[num])
+            return;
+        if (fullTextStatus[num] === "loading")
+            return;
+        loadSurahText(num);
+    }, [activeTab, selectedSurah]);
     useEffect(() => {
         if (!bookOpen)
             return;
@@ -1131,12 +1353,12 @@ function QuranJournal() {
     return (React.createElement(React.Fragment, null,
         React.createElement("style", null, globalStyles),
         React.createElement("div", { style: { minHeight: "100vh", background: COLORS.ivory, fontFamily: "'Poppins', sans-serif" } },
-            React.createElement("nav", { style: { background: COLORS.sand, borderBottom: `2px solid ${COLORS.dustyPink}`, padding: "0.7rem 1rem 0.6rem", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 12px rgba(212,175,55,0.10)" } },
+            React.createElement("nav", { style: { background: COLORS.sand, borderBottom: `2px solid ${COLORS.dustyPink}`, paddingTop: "calc(0.8rem + env(safe-area-inset-top))", paddingBottom: "0.6rem", paddingLeft: "calc(1rem + env(safe-area-inset-left))", paddingRight: "calc(1rem + env(safe-area-inset-right))", position: "sticky", top: 0, zIndex: 100, boxShadow: "0 2px 12px rgba(212,175,55,0.10)" } },
                 React.createElement("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" } },
                     React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.15rem", color: COLORS.deepTaupe, fontWeight: 600, letterSpacing: "0.02em", cursor: "pointer" }, onClick: () => setPage("cover") }, "\u2726 My Quran Journal"),
                     React.createElement("span", { "aria-live": "polite", style: { fontSize: "0.65rem", color: COLORS.taupe, opacity: 0.75, flexShrink: 0, marginLeft: "0.5rem", textAlign: "right" } }, saveStatus === "saving" ? "Saving…" : hasLoaded ? "✓ Saved" : "")),
-                React.createElement("div", { className: "nav-scroll", style: { display: "flex", gap: "0.45rem", alignItems: "center", overflowX: "auto", paddingBottom: "0.15rem" } }, [["cover", "Cover"], ["intro", "Intro"], ["surahs", "Surahs"], ["dhikr", "Dhikr"], ["reminders", "Reminders"], ["tracker", "Tracker"], ["favorites", "Favorites"], ["extras", "Extras"]].map(([pg, label]) => (React.createElement("button", { key: pg, onClick: () => { setPage(pg); setSelectedSurah(null); }, style: { background: page === pg ? COLORS.dustyPink : "transparent", color: page === pg ? "#fff" : COLORS.taupe, border: `1px solid ${COLORS.dustyPink}`, borderRadius: 20, padding: "0.3rem 0.9rem", fontSize: "0.75rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif", fontWeight: 500, transition: "all 0.2s", flexShrink: 0, whiteSpace: "nowrap" } }, label))))),
-            React.createElement("main", { style: { maxWidth: 860, margin: "0 auto", padding: "1.5rem 1rem" } },
+                React.createElement("div", { className: "nav-scroll", style: { display: "flex", gap: "0.5rem", alignItems: "center", overflowX: "auto", paddingBottom: "0.25rem", paddingTop: "0.1rem", paddingRight: "0.4rem" } }, [["cover", "Cover"], ["intro", "Intro"], ["surahs", "Surahs"], ["dhikr", "Dhikr"], ["prayers", "Prayers"], ["reminders", "Reminders"], ["tracker", "Tracker"], ["favorites", "Favorites"], ["extras", "Extras"]].map(([pg, label]) => (React.createElement("button", { key: pg, onClick: () => { setPage(pg); setSelectedSurah(null); }, style: { background: page === pg ? COLORS.dustyPink : "transparent", color: page === pg ? "#fff" : COLORS.taupe, border: `1px solid ${COLORS.dustyPink}`, borderRadius: 20, padding: "0.55rem 1rem", minHeight: 40, fontSize: "0.8rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif", fontWeight: 500, transition: "all 0.2s", flexShrink: 0, whiteSpace: "nowrap", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation" } }, label))))),
+            React.createElement("main", { style: { maxWidth: 860, margin: "0 auto", padding: "1.5rem 1rem", paddingLeft: "calc(1rem + env(safe-area-inset-left))", paddingRight: "calc(1rem + env(safe-area-inset-right))", paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" } },
                 page === "cover" && (React.createElement("div", { style: { textAlign: "center", padding: "2rem 1rem" } },
                     React.createElement("div", { style: { background: `linear-gradient(145deg, ${COLORS.sand}, ${COLORS.lightPink})`, borderRadius: 24, padding: "3rem 2rem", border: `2px solid ${COLORS.dustyPink}`, position: "relative", overflow: "hidden", boxShadow: "0 8px 32px rgba(212,175,55,0.12)" } },
                         React.createElement("div", { style: { position: "absolute", top: 16, left: 20, fontSize: "1.5rem", opacity: 0.3 } }, "\uD83C\uDF19"),
@@ -1245,8 +1467,34 @@ function QuranJournal() {
                         React.createElement("div", { style: { display: "flex", flexWrap: "wrap", gap: "0.4rem" } }, selectedSurah.themes.map(t => (React.createElement("button", { key: t, onClick: () => setThemeModal(t), style: { fontSize: "0.7rem", background: "rgba(255,248,240,0.8)", color: COLORS.deepTaupe, borderRadius: 10, padding: "0.2rem 0.6rem", border: `1px solid ${COLORS.dustyPink}44`, cursor: "pointer", fontFamily: "'Poppins', sans-serif" } },
                             t,
                             " \uD83D\uDD0D")))),
-                        React.createElement("button", { onClick: () => openBookAtSurah(selectedSurah.number), "aria-label": "Read full Surah in the Quran book", style: { marginTop: "0.9rem", width: "100%", background: `linear-gradient(135deg, ${COLORS.gold}, ${COLORS.dustyPink})`, border: "none", borderRadius: 16, padding: "0.6rem", fontSize: "0.85rem", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem", boxShadow: "0 3px 10px rgba(212,175,55,0.4)", fontFamily: "'Poppins', sans-serif", fontWeight: 500 } }, "\uD83D\uDCD6 Read Full Surah")),
-                    React.createElement("div", { style: { display: "flex", gap: "0.4rem", marginBottom: "1rem", flexWrap: "wrap" } }, [["overview", "📖 Overview"], ["tafsir", "✨ Tafsir"], ["reflect", "💭 Reflect"], ["dua", "🤲 Dua"], ["journal", "🌸 Journal Extras"], ["notes", "📝 Notes"]].map(([tab, label]) => (React.createElement("button", { key: tab, onClick: () => setActiveTab(tab), style: { background: activeTab === tab ? COLORS.dustyPink : "#fff", color: activeTab === tab ? "#fff" : COLORS.taupe, border: `1px solid ${COLORS.dustyPink}`, borderRadius: 20, padding: "0.45rem 1rem", fontSize: "0.78rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, label)))),
+                        React.createElement("button", { onClick: () => setActiveTab("read"), style: { marginTop: "1.2rem", width: "100%", background: `linear-gradient(120deg, ${COLORS.gold}, ${COLORS.dustyPink} 85%)`, color: "#fff", border: "none", borderRadius: 24, padding: "1.15rem 1rem", fontSize: "1.05rem", fontWeight: 700, cursor: "pointer", fontFamily: "'Poppins', sans-serif", boxShadow: "0 10px 22px rgba(180,140,60,0.45)", letterSpacing: "0.01em", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" } },
+                            React.createElement("span", { style: { fontSize: "1.3rem" } }, "\uD83D\uDCD6"),
+                            "Read Full Surah")),
+                    React.createElement("div", { style: { display: "flex", gap: "0.4rem", marginBottom: "1rem", flexWrap: "wrap" } }, [["overview", "📖 Overview"], ["read", "📜 Read Surah"], ["tafsir", "✨ Tafsir"], ["reflect", "💭 Reflect"], ["dua", "🤲 Dua"], ["journal", "🌸 Journal Extras"], ["notes", "📝 Notes"]].map(([tab, label]) => (React.createElement("button", { key: tab, onClick: () => setActiveTab(tab), style: { background: activeTab === tab ? COLORS.dustyPink : "#fff", color: activeTab === tab ? "#fff" : COLORS.taupe, border: `1px solid ${COLORS.dustyPink}`, borderRadius: 20, padding: "0.45rem 1rem", fontSize: "0.78rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, label)))),
+                    activeTab === "read" && (React.createElement("div", { style: { background: "#fff", borderRadius: 16, padding: "1.4rem", border: `1px solid ${COLORS.sand}` } },
+                        (() => {
+                            const num = selectedSurah.number;
+                            const text = FULL_SURAH_TEXT[num] || fullTextCache[num];
+                            const status = fullTextStatus[num];
+                            if (text) {
+                                return text.map((ayah, i) => (React.createElement("div", { key: i, style: { margin: "0.9rem 0", paddingBottom: "0.9rem", borderBottom: i < text.length - 1 ? `1px solid ${COLORS.sand}` : "none" } },
+                                    React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "1.35rem", color: COLORS.deepTaupe, lineHeight: 2, textAlign: "right" } },
+                                        ayah.arabic,
+                                        " ",
+                                        React.createElement("span", { style: { fontFamily: "'Poppins', sans-serif", fontSize: "0.65rem", color: COLORS.gold, border: `1px solid ${COLORS.gold}66`, borderRadius: "50%", padding: "0.1rem 0.4rem" } }, i + 1)),
+                                    React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "0.92rem", color: COLORS.taupe, marginTop: "0.25rem" } }, ayah.english))));
+                            }
+                            if (status === "loading") {
+                                return (React.createElement("div", { style: { padding: "2rem 0", color: COLORS.taupe, fontSize: "0.85rem", textAlign: "center" } }, "✦ Fetching the full surah from the Quran text service…"));
+                            }
+                            if (status === "error") {
+                                return (React.createElement("div", { style: { padding: "1.5rem 0" } },
+                                    React.createElement("div", { style: { color: COLORS.taupe, fontSize: "0.85rem", marginBottom: "0.5rem" } }, "Couldn't load this surah's full text."),
+                                    fullTextErrorDetail[num] && (React.createElement("div", { style: { fontFamily: "monospace", fontSize: "0.7rem", color: "#a04", background: "#fee", border: "1px solid #f9c", borderRadius: 8, padding: "0.5rem 0.7rem", marginBottom: "0.8rem", wordBreak: "break-word" } }, fullTextErrorDetail[num])),
+                                    React.createElement("button", { onClick: () => loadSurahText(num), style: { background: COLORS.dustyPink, color: "#fff", border: "none", borderRadius: 16, padding: "0.4rem 1.1rem", fontSize: "0.78rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, "Try again")));
+                            }
+                            return React.createElement("div", { style: { padding: "2rem 0", color: COLORS.taupe, fontSize: "0.85rem", textAlign: "center" } }, "✦ Loading…");
+                        })())),
                     activeTab === "overview" && (React.createElement("div", null,
                         React.createElement("div", { style: { background: "#fff", borderRadius: 16, padding: "1.4rem", border: `1px solid ${COLORS.sand}`, marginBottom: "1rem" } },
                             React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.2rem", color: COLORS.deepTaupe, marginBottom: "0.8rem" } }, "\u2726 Easy Understanding"),
@@ -1420,6 +1668,78 @@ function QuranJournal() {
                                 React.createElement("div", { style: { background: done ? COLORS.gold : COLORS.dustyPink, height: "100%", width: `${pct}%`, transition: "width 0.3s" } })),
                             count > 0 && (React.createElement("button", { onClick: () => resetDhikr(d.id), style: { marginTop: "0.5rem", background: "transparent", border: "none", color: COLORS.taupe, fontSize: "0.7rem", cursor: "pointer", textDecoration: "underline", padding: 0 } }, "reset today's count"))));
                     })))),
+                page === "prayers" && (React.createElement("div", null,
+                    React.createElement("div", { style: { textAlign: "center", marginBottom: "1.5rem" } },
+                        React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "2rem", color: COLORS.deepTaupe } }, "Prayer Times & Qibla \uD83D\uDD4C"),
+                        React.createElement("div", { style: { color: COLORS.taupe, fontSize: "0.82rem" } }, "Based on your location, calculated live for today")),
+                    React.createElement("div", { style: { display: "flex", gap: "0.5rem", justifyContent: "center", marginBottom: "1.3rem" } }, [["times", "🕐 Times"], ["qibla", "🧭 Qibla"]].map(([v, label]) => (React.createElement("button", { key: v, onClick: () => setPrayerSubView(v), style: { background: prayerSubView === v ? COLORS.dustyPink : "transparent", color: prayerSubView === v ? "#fff" : COLORS.taupe, border: `1px solid ${COLORS.dustyPink}`, borderRadius: 20, padding: "0.5rem 1.4rem", fontSize: "0.85rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif", fontWeight: 500 } }, label)))),
+                    React.createElement("div", { style: { background: "#fff", borderRadius: 16, padding: "1rem 1.2rem", border: `1px solid ${COLORS.sand}`, marginBottom: "1.2rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.8rem", flexWrap: "wrap" } },
+                        React.createElement("div", { style: { fontSize: "0.82rem", color: COLORS.deepTaupe } },
+                            "\uD83D\uDCCD ",
+                            prayerLocation ? (prayerLocation.label || `${prayerLocation.lat.toFixed(3)}, ${prayerLocation.lng.toFixed(3)}`) : "No location set yet"),
+                        React.createElement("button", { onClick: detectLocation, disabled: prayerStatus === "locating", style: { background: "transparent", border: `1px solid ${COLORS.dustyPink}`, color: COLORS.deepTaupe, borderRadius: 16, padding: "0.35rem 0.9rem", fontSize: "0.75rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, prayerStatus === "locating" ? "Locating…" : prayerLocation ? "Update location" : "Detect my location")),
+                    prayerStatus === "error" && prayerError && (React.createElement("div", { style: { background: "#fee", border: "1px solid #f9c", borderRadius: 12, padding: "0.8rem 1rem", marginBottom: "1.2rem", fontSize: "0.78rem", color: "#a04" } }, prayerError)),
+                    !prayerLocation && (React.createElement("div", { style: { background: `linear-gradient(135deg, ${COLORS.sand}, ${COLORS.lightPink})`, borderRadius: 16, padding: "1.4rem", border: `1px solid ${COLORS.dustyPink}`, textAlign: "center" } },
+                        React.createElement("div", { style: { fontSize: "1.6rem", marginBottom: "0.5rem" } }, "\uD83D\uDCCD"),
+                        React.createElement("div", { style: { fontSize: "0.85rem", color: COLORS.deepTaupe, marginBottom: "0.8rem" } }, "Tap \"Detect my location\" above to see today's prayer times and the direction of the Qibla from where you are. Your browser will ask permission first \u2014 nothing is shared beyond this device."))),
+                    prayerSubView === "times" && prayerLocation && (React.createElement("div", null,
+                        React.createElement("div", { style: { display: "flex", gap: "0.4rem", flexWrap: "wrap", justifyContent: "center", marginBottom: "1.2rem" } }, PRAYER_CALC_METHODS.map(m => (React.createElement("button", { key: m.id, onClick: () => setPrayerMethod(m.id), style: { background: prayerMethod === m.id ? COLORS.gold : "transparent", color: prayerMethod === m.id ? "#fff" : COLORS.taupe, border: `1px solid ${COLORS.gold}`, borderRadius: 14, padding: "0.3rem 0.7rem", fontSize: "0.68rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, m.label)))),
+                        prayerStatus === "loading" && (React.createElement("div", { style: { textAlign: "center", color: COLORS.taupe, fontSize: "0.85rem", padding: "1.5rem 0" } }, "\u2726 Fetching today's prayer times\u2026")),
+                        prayerData && (React.createElement(React.Fragment, null,
+                            nextPrayerInfo && (React.createElement("div", { style: { background: `linear-gradient(135deg, ${COLORS.gold}22, ${COLORS.dustyPink}22)`, borderRadius: 16, padding: "1.4rem", marginBottom: "1.2rem", border: `1px solid ${COLORS.gold}55`, textAlign: "center" } },
+                                React.createElement("div", { style: { fontSize: "0.68rem", color: COLORS.gold, letterSpacing: "0.12em", marginBottom: "0.5rem" } }, "\u2726 NEXT PRAYER \u2726"),
+                                React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.6rem", color: COLORS.deepTaupe } },
+                                    PRAYER_ICONS[nextPrayerInfo.name],
+                                    " ",
+                                    PRAYER_LABELS[nextPrayerInfo.name]),
+                                React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.9rem", color: COLORS.deepTaupe, marginTop: "0.2rem" } }, nextPrayerInfo.countdown),
+                                React.createElement("div", { style: { fontSize: "0.72rem", color: COLORS.taupe, marginTop: "0.3rem" } },
+                                    "at ",
+                                    nextPrayerInfo.time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })))),
+                            prayerData.date && (React.createElement("div", { style: { textAlign: "center", fontSize: "0.78rem", color: COLORS.taupe, marginBottom: "1rem" } },
+                                prayerData.date.hijri && React.createElement("span", null,
+                                    prayerData.date.hijri.day,
+                                    " ",
+                                    prayerData.date.hijri.month.en,
+                                    " ",
+                                    prayerData.date.hijri.year,
+                                    " AH"),
+                                prayerData.date.readable && React.createElement("span", null,
+                                    " \u2022 ",
+                                    prayerData.date.readable))),
+                            React.createElement("div", { style: { background: "#fff", borderRadius: 16, border: `1px solid ${COLORS.sand}`, overflow: "hidden" } }, PRAYER_ORDER.map((name, i) => {
+                                const timeStr = (prayerData.timings[name] || "").slice(0, 5);
+                                const isNext = nextPrayerInfo && nextPrayerInfo.name === name;
+                                return (React.createElement("div", { key: name, style: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.9rem 1.2rem", borderTop: i === 0 ? "none" : `1px solid ${COLORS.sand}`, background: isNext ? `${COLORS.gold}18` : "transparent" } },
+                                    React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "0.7rem" } },
+                                        React.createElement("span", { style: { fontSize: "1.1rem" } }, PRAYER_ICONS[name]),
+                                        React.createElement("span", { style: { fontSize: "0.9rem", color: COLORS.deepTaupe, fontWeight: isNext ? 600 : 400 } }, PRAYER_LABELS[name])),
+                                    React.createElement("span", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.15rem", color: isNext ? COLORS.gold : COLORS.deepTaupe } }, timeStr)));
+                            })))))),
+                    prayerSubView === "qibla" && prayerLocation && qiblaBearing !== null && (React.createElement("div", { style: { textAlign: "center" } },
+                        React.createElement("div", { style: { background: "#fff", borderRadius: 20, padding: "2rem 1.5rem", border: `1px solid ${COLORS.sand}`, marginBottom: "1.2rem" } },
+                            React.createElement("div", { style: { position: "relative", width: 220, height: 220, margin: "0 auto 1rem", borderRadius: "50%", background: `linear-gradient(135deg, ${COLORS.sand}, ${COLORS.lightPink})`, border: `3px solid ${COLORS.dustyPink}` } },
+                                React.createElement("div", { style: { position: "absolute", top: 8, left: "50%", transform: "translateX(-50%)", fontSize: "0.75rem", color: COLORS.deepTaupe, fontWeight: 600 } }, "N"),
+                                React.createElement("div", { style: { position: "absolute", bottom: 8, left: "50%", transform: "translateX(-50%)", fontSize: "0.75rem", color: COLORS.taupe } }, "S"),
+                                React.createElement("div", { style: { position: "absolute", top: "50%", left: 8, transform: "translateY(-50%)", fontSize: "0.75rem", color: COLORS.taupe } }, "W"),
+                                React.createElement("div", { style: { position: "absolute", top: "50%", right: 8, transform: "translateY(-50%)", fontSize: "0.75rem", color: COLORS.taupe } }, "E"),
+                                React.createElement("div", { style: {
+                                        position: "absolute", top: "50%", left: "50%", width: 0, height: 0,
+                                        transform: `translate(-50%, -100%) rotate(${compassStatus === "active" && compassHeading !== null ? (qiblaBearing - compassHeading + 360) % 360 : qiblaBearing}deg)`,
+                                        transformOrigin: "50% 100%", transition: "transform 0.2s ease-out"
+                                    } },
+                                    React.createElement("div", { style: { fontSize: "2.4rem", lineHeight: 1, filter: "drop-shadow(0 2px 4px rgba(107,91,78,0.4))" } }, "\uD83D\uDD4B")),
+                                React.createElement("div", { style: { position: "absolute", top: "50%", left: "50%", width: 8, height: 8, borderRadius: "50%", background: COLORS.dustyPink, transform: "translate(-50%,-50%)" } })),
+                            React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.6rem", color: COLORS.deepTaupe } },
+                                Math.round(qiblaBearing),
+                                "\u00B0 from North"),
+                            React.createElement("div", { style: { fontSize: "0.78rem", color: COLORS.taupe, marginTop: "0.4rem" } }, compassStatus === "active"
+                                ? "Turn until the Kaaba icon points straight up — that's your Qibla direction."
+                                : "This assumes you're facing true North. Enable the live compass below, or use a separate compass to find North first."),
+                            compassStatus !== "active" && (React.createElement("button", { onClick: enableCompass, disabled: compassStatus === "requesting", style: { marginTop: "1rem", background: COLORS.dustyPink, color: "#fff", border: "none", borderRadius: 20, padding: "0.5rem 1.3rem", fontSize: "0.8rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, compassStatus === "requesting" ? "Requesting…" : "Enable live compass")),
+                            compassStatus === "denied" && (React.createElement("div", { style: { fontSize: "0.72rem", color: "#a04", marginTop: "0.6rem" } }, "Compass permission was denied \u2014 you can still use the static direction above with a separate compass.")),
+                            compassStatus === "unsupported" && (React.createElement("div", { style: { fontSize: "0.72rem", color: COLORS.taupe, marginTop: "0.6rem" } }, "This device/browser doesn't support a live compass \u2014 the static direction above still works."))),
+                        React.createElement("div", { style: { fontSize: "0.72rem", color: COLORS.taupe, opacity: 0.8 } }, "Compasses can be thrown off by metal objects or magnets nearby \u2014 for the most reliable reading, step away from electronics and try again if it seems off."))))),
                 page === "reminders" && (React.createElement("div", null,
                     React.createElement("div", { style: { textAlign: "center", marginBottom: "1.5rem" } },
                         React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "2rem", color: COLORS.deepTaupe } }, "Reminders \uD83D\uDD14"),
@@ -1602,93 +1922,93 @@ function QuranJournal() {
                     React.createElement("div", { style: { textAlign: "center", marginTop: "1.5rem" } },
                         React.createElement("button", { onClick: resetJournal, style: { background: "transparent", border: `1px solid ${COLORS.taupe}66`, color: COLORS.taupe, borderRadius: 20, padding: "0.5rem 1.2rem", fontSize: "0.75rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, "Clear all my saved journal data on this device"),
                         React.createElement("div", { style: { fontSize: "0.68rem", color: COLORS.taupe, opacity: 0.7, marginTop: "0.4rem" } }, "Your notes, duas, favorites, and tracked days are saved only in this browser, on this device."))))),
-            React.createElement("button", { onClick: openBook, "aria-label": "Open the Quran book", className: "pin-book-btn", style: { position: "fixed", bottom: 22, right: 22, zIndex: 500, width: 60, height: 60, borderRadius: "50%", background: `linear-gradient(135deg, ${COLORS.gold}, ${COLORS.dustyPink})`, border: `2px solid ${COLORS.ivory}`, color: "#fff", fontSize: "1.6rem", cursor: "pointer", boxShadow: "0 6px 18px rgba(107,91,78,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }, title: "Open the Quran" }, "\uD83D\uDCD6"),
+            React.createElement("button", { onClick: openBook, "aria-label": "Open the Quran book", className: "pin-book-btn", style: { position: "fixed", bottom: "calc(22px + env(safe-area-inset-bottom))", right: "calc(22px + env(safe-area-inset-right))", zIndex: 500, width: 60, height: 60, borderRadius: "50%", background: `linear-gradient(135deg, ${COLORS.gold}, ${COLORS.dustyPink})`, border: `2px solid ${COLORS.ivory}`, color: "#fff", fontSize: "1.6rem", cursor: "pointer", boxShadow: "0 6px 18px rgba(107,91,78,0.35)", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation" }, title: "Open the Quran" }, "\uD83D\uDCD6"),
             bookOpen && (() => {
                 const p = BOOK_PAGES[bookPageIdx];
                 const s = p.isCover ? null : ALL_SURAHS.find(x => x.number === p.surahNumber);
-                return (React.createElement("div", { onClick: () => setBookOpen(false), style: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(60,48,38,0.6)", zIndex: 1000, display: "flex", alignItems: "stretch", justifyContent: "stretch", padding: 0, overflowY: "auto" } },
-                    React.createElement("div", { onClick: e => e.stopPropagation(), style: { position: "relative", width: "100%", height: "100dvh", margin: 0 } },
-                        React.createElement("button", { onClick: () => setBookOpen(false), "aria-label": "Close book", style: { position: "absolute", top: 14, right: 14, zIndex: 10, background: "rgba(107,91,78,0.85)", border: `1px solid ${COLORS.ivory}55`, color: "#fff", borderRadius: "50%", width: 38, height: 38, fontSize: "1.2rem", cursor: "pointer" } }, "\u2715"),
-                        React.createElement("div", { key: bookPageIdx + "-" + bookFlipping, className: "book-page", onTouchStart: e => { bookTouchStartX.current = e.touches[0].clientX; }, onTouchEnd: e => {
-                                if (bookTouchStartX.current == null)
-                                    return;
-                                const dx = e.changedTouches[0].clientX - bookTouchStartX.current;
-                                bookTouchStartX.current = null;
-                                if (dx < -40)
-                                    turnBookPage(1);
-                                else if (dx > 40)
-                                    turnBookPage(-1);
-                            }, style: {
-                                background: `linear-gradient(120deg, ${COLORS.ivory}, ${COLORS.lightPink} 90%)`,
-                                borderRadius: 0,
-                                padding: "3.5rem 2rem 1.5rem",
-                                width: "100%",
-                                height: "100%",
-                                boxShadow: "inset 8px 0 16px -12px rgba(107,91,78,0.5)",
-                                position: "relative",
-                                display: "flex",
-                                flexDirection: "column",
-                                boxSizing: "border-box"
-                            } },
-                            React.createElement("div", { style: { position: "absolute", top: 14, left: 18, fontSize: "0.7rem", color: COLORS.gold, letterSpacing: "0.1em" } },
-                                "\u2726 ",
-                                p.isCover ? "COVER" : `${s.name} — Page ${p.pageIndex + 1} of ${p.totalPages}`),
-                            !p.isCover && s && (React.createElement("button", { onClick: () => toggleFavorite(s.number), "aria-label": favorites.includes(s.number) ? "Unpin favorite" : "Pin as favorite", style: { position: "absolute", top: 10, right: 14, background: "transparent", border: "none", fontSize: "1.2rem", cursor: "pointer" } }, favorites.includes(s.number) ? "💛" : "🤍")),
-                            React.createElement("div", { style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: p.isCover ? "center" : "flex-start", textAlign: "center", marginTop: "1.2rem", overflowY: "auto" } }, p.isCover ? (React.createElement(React.Fragment, null,
-                                React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "2.2rem", color: COLORS.gold, marginBottom: "0.5rem" } }, "\u0628\u0650\u0633\u0652\u0645\u0650 \u0627\u0644\u0644\u064E\u0651\u0647\u0650 \u0627\u0644\u0631\u064E\u0651\u062D\u0652\u0645\u064E\u0670\u0646\u0650 \u0627\u0644\u0631\u064E\u0651\u062D\u0650\u064A\u0645\u0650"),
-                                React.createElement("div", { className: "gold-divider" }),
-                                React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.6rem", color: COLORS.deepTaupe, marginTop: "0.8rem" } }, "The Light of My Heart"),
-                                React.createElement("div", { style: { fontSize: "0.82rem", color: COLORS.taupe, marginTop: "0.6rem", maxWidth: 320 } }, "All 114 surahs, complete. A few short ones open instantly offline; the rest load live from a verified Quran text service the first time you visit them, then stay saved on this device. Use the arrows (or \u2190 \u2192) to turn the page."))) : (React.createElement(React.Fragment, null,
-                                React.createElement("div", { style: { fontSize: "0.72rem", color: COLORS.taupe } },
-                                    s.number,
-                                    ". ",
-                                    s.name,
-                                    " \u2014 ",
-                                    s.meaning,
-                                    " \u2022 ",
-                                    s.ayahs,
-                                    " ayahs"),
-                                React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "1.7rem", color: COLORS.gold, margin: "0.3rem 0 0.9rem" } }, s.arabic),
-                                React.createElement("div", { className: "gold-divider" }),
-                                (() => {
-                                    const text = FULL_SURAH_TEXT[s.number] || fullTextCache[s.number];
-                                    const status = fullTextStatus[s.number];
-                                    if (text) {
-                                        const start = p.pageIndex * AYAHS_PER_BOOK_PAGE;
-                                        const pageAyahs = text.slice(start, start + AYAHS_PER_BOOK_PAGE);
-                                        return pageAyahs.map((ayah, i) => (React.createElement("div", { key: start + i, style: { margin: "0.9rem 0", width: "100%" } },
-                                            React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "1.35rem", color: COLORS.deepTaupe, lineHeight: 2 } },
-                                                ayah.arabic,
-                                                " ",
-                                                React.createElement("span", { style: { fontFamily: "'Poppins', sans-serif", fontSize: "0.65rem", color: COLORS.gold, border: `1px solid ${COLORS.gold}66`, borderRadius: "50%", padding: "0.1rem 0.4rem" } }, start + i + 1)),
-                                            React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "0.92rem", color: COLORS.taupe, marginTop: "0.25rem" } }, ayah.english))));
-                                    }
-                                    if (status === "loading") {
-                                        return (React.createElement("div", { style: { padding: "2rem 0", color: COLORS.taupe, fontSize: "0.85rem" } }, "\u2726 Fetching the full surah from the Quran text service\u2026"));
-                                    }
-                                    if (status === "error") {
-                                        return (React.createElement("div", { style: { padding: "1.5rem 0" } },
-                                            React.createElement("div", { style: { color: COLORS.taupe, fontSize: "0.85rem", marginBottom: "0.5rem" } }, "Couldn't load this surah's full text."),
-                                            fullTextErrorDetail[s.number] && (React.createElement("div", { style: { fontFamily: "monospace", fontSize: "0.7rem", color: "#a04", background: "#fee", border: "1px solid #f9c", borderRadius: 8, padding: "0.5rem 0.7rem", marginBottom: "0.8rem", wordBreak: "break-word", textAlign: "left" } }, fullTextErrorDetail[s.number])),
-                                            React.createElement("div", { style: { fontSize: "0.72rem", color: COLORS.taupe, opacity: 0.8, marginBottom: "0.8rem" } }, "If this keeps happening even with internet, try opening this file through a local server (e.g. VS Code's \"Live Server\" extension) instead of double-clicking it \u2014 some browsers restrict what a page opened directly from disk is allowed to fetch."),
-                                            React.createElement("button", { onClick: () => loadSurahText(s.number), style: { background: COLORS.dustyPink, color: "#fff", border: "none", borderRadius: 16, padding: "0.4rem 1.1rem", fontSize: "0.78rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, "Try again"),
-                                            s.favoriteAyah && (React.createElement("div", { style: { marginTop: "1.2rem" } },
-                                                React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "1.4rem", color: COLORS.deepTaupe, lineHeight: 1.8 } }, s.favoriteAyah.arabic),
-                                                React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "0.95rem", color: COLORS.taupe, marginTop: "0.4rem" } },
-                                                    "\"",
-                                                    s.favoriteAyah.english,
-                                                    "\"")))));
-                                    }
-                                    return React.createElement("div", { style: { padding: "2rem 0", color: COLORS.taupe, fontSize: "0.85rem" } }, "\u2726 Loading\u2026");
-                                })(),
-                                React.createElement("button", { onClick: () => { setBookOpen(false); setPage("surahs"); openSurah(s); }, style: { marginTop: "1.2rem", background: "transparent", border: `1px solid ${COLORS.dustyPink}`, color: COLORS.deepTaupe, borderRadius: 16, padding: "0.4rem 1rem", fontSize: "0.75rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, "Open this Surah's journal page \u2726")))),
-                            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem", flexShrink: 0, paddingTop: "0.6rem", borderTop: `1px solid ${COLORS.dustyPink}33` } },
-                                React.createElement("button", { onClick: () => turnBookPage(-1), disabled: bookPageIdx === 0, "aria-label": "Previous page", style: { background: "transparent", border: `1px solid ${COLORS.dustyPink}`, color: COLORS.deepTaupe, borderRadius: "50%", width: 42, height: 42, cursor: bookPageIdx === 0 ? "default" : "pointer", opacity: bookPageIdx === 0 ? 0.35 : 1, fontSize: "1.1rem", flexShrink: 0 } }, "\u2039"),
-                                React.createElement("div", { style: { fontSize: "0.78rem", color: COLORS.taupe, fontFamily: "'Poppins', sans-serif", flexShrink: 0 } },
-                                    bookPageIdx,
-                                    " / ",
-                                    BOOK_PAGES.length - 1),
-                                React.createElement("button", { onClick: () => turnBookPage(1), disabled: bookPageIdx === BOOK_PAGES.length - 1, "aria-label": "Next page", style: { background: "transparent", border: `1px solid ${COLORS.dustyPink}`, color: COLORS.deepTaupe, borderRadius: "50%", width: 42, height: 42, cursor: bookPageIdx === BOOK_PAGES.length - 1 ? "default" : "pointer", opacity: bookPageIdx === BOOK_PAGES.length - 1 ? 0.35 : 1, fontSize: "1.1rem", flexShrink: 0 } }, "\u203A"))))));
+                return (React.createElement("div", { style: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: `linear-gradient(160deg, ${COLORS.ivory}, ${COLORS.lightPink})`, zIndex: 1000, display: "flex", flexDirection: "column", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)", paddingLeft: "env(safe-area-inset-left)", paddingRight: "env(safe-area-inset-right)" } },
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.9rem 1.1rem 0.6rem", flexShrink: 0, borderBottom: `1px solid ${COLORS.dustyPink}33` } },
+                        React.createElement("div", { style: { fontSize: "0.72rem", color: COLORS.gold, letterSpacing: "0.1em", fontFamily: "'Poppins', sans-serif" } },
+                            "\u2726 ",
+                            p.isCover ? "COVER" : `PAGE ${bookPageIdx} OF ${BOOK_PAGES.length - 1}`),
+                        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "0.5rem" } },
+                            !p.isCover && s && (React.createElement("button", { onClick: () => toggleFavorite(s.number), "aria-label": favorites.includes(s.number) ? "Unpin favorite" : "Pin as favorite", style: { background: "transparent", border: "none", fontSize: "1.3rem", cursor: "pointer", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" } }, favorites.includes(s.number) ? "💛" : "🤍")),
+                            React.createElement("button", { onClick: () => setBookOpen(false), "aria-label": "Close book", style: { background: `${COLORS.dustyPink}22`, border: `1px solid ${COLORS.dustyPink}55`, color: COLORS.deepTaupe, borderRadius: "50%", width: 40, height: 40, fontSize: "1.05rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, "\u2715"))),
+                    React.createElement("div", { key: bookPageIdx + "-" + bookFlipping, className: "book-page", onTouchStart: e => { bookTouchStartX.current = e.touches[0].clientX; }, onTouchEnd: e => {
+                            if (bookTouchStartX.current == null)
+                                return;
+                            const dx = e.changedTouches[0].clientX - bookTouchStartX.current;
+                            bookTouchStartX.current = null;
+                            if (dx < -40)
+                                turnBookPage(1);
+                            else if (dx > 40)
+                                turnBookPage(-1);
+                        }, style: {
+                            flex: 1,
+                            overflowY: "auto",
+                            WebkitOverflowScrolling: "touch",
+                            padding: "1.4rem 1.3rem 1.6rem",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: p.isCover ? "center" : "flex-start",
+                            textAlign: "center",
+                            maxWidth: 640,
+                            width: "100%",
+                            margin: "0 auto"
+                        } }, p.isCover ? (React.createElement(React.Fragment, null,
+                            React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "2.4rem", color: COLORS.gold, marginBottom: "0.5rem" } }, "\u0628\u0650\u0633\u0652\u0645\u0650 \u0627\u0644\u0644\u064E\u0651\u0647\u0650 \u0627\u0644\u0631\u064E\u0651\u062D\u0652\u0645\u064E\u0670\u0646\u0650 \u0627\u0644\u0631\u064E\u0651\u062D\u0650\u064A\u0645\u0650"),
+                            React.createElement("div", { className: "gold-divider" }),
+                            React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.8rem", color: COLORS.deepTaupe, marginTop: "0.8rem" } }, "The Light of My Heart"),
+                            React.createElement("div", { style: { fontSize: "0.85rem", color: COLORS.taupe, marginTop: "0.6rem", maxWidth: 360 } }, "All 114 surahs, complete. A few short ones open instantly offline; the rest load live from a verified Quran text service the first time you visit them, then stay saved on this device. Swipe, or use the arrows (or \u2190 \u2192), to turn the page."))) : (React.createElement(React.Fragment, null,
+                            React.createElement("div", { style: { fontSize: "0.75rem", color: COLORS.taupe } },
+                                s.number,
+                                ". ",
+                                s.name,
+                                " \u2014 ",
+                                s.meaning,
+                                " \u2022 ",
+                                s.ayahs,
+                                " ayahs"),
+                            React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "1.9rem", color: COLORS.gold, margin: "0.3rem 0 0.9rem" } }, s.arabic),
+                            React.createElement("div", { className: "gold-divider" }),
+                            (() => {
+                                const text = FULL_SURAH_TEXT[s.number] || fullTextCache[s.number];
+                                const status = fullTextStatus[s.number];
+                                if (text) {
+                                    return text.map((ayah, i) => (React.createElement("div", { key: i, style: { margin: "0.9rem 0", width: "100%" } },
+                                        React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "1.45rem", color: COLORS.deepTaupe, lineHeight: 2 } },
+                                            ayah.arabic,
+                                            " ",
+                                            React.createElement("span", { style: { fontFamily: "'Poppins', sans-serif", fontSize: "0.65rem", color: COLORS.gold, border: `1px solid ${COLORS.gold}66`, borderRadius: "50%", padding: "0.1rem 0.4rem" } }, i + 1)),
+                                        React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "0.95rem", color: COLORS.taupe, marginTop: "0.25rem" } }, ayah.english))));
+                                }
+                                if (status === "loading") {
+                                    return (React.createElement("div", { style: { padding: "2rem 0", color: COLORS.taupe, fontSize: "0.85rem" } }, "\u2726 Fetching the full surah from the Quran text service\u2026"));
+                                }
+                                if (status === "error") {
+                                    return (React.createElement("div", { style: { padding: "1.5rem 0" } },
+                                        React.createElement("div", { style: { color: COLORS.taupe, fontSize: "0.85rem", marginBottom: "0.5rem" } }, "Couldn't load this surah's full text."),
+                                        fullTextErrorDetail[s.number] && (React.createElement("div", { style: { fontFamily: "monospace", fontSize: "0.7rem", color: "#a04", background: "#fee", border: "1px solid #f9c", borderRadius: 8, padding: "0.5rem 0.7rem", marginBottom: "0.8rem", wordBreak: "break-word", textAlign: "left" } }, fullTextErrorDetail[s.number])),
+                                        React.createElement("div", { style: { fontSize: "0.72rem", color: COLORS.taupe, opacity: 0.8, marginBottom: "0.8rem" } }, "If this keeps happening even with internet, try opening this file through a local server (e.g. VS Code's \"Live Server\" extension) instead of double-clicking it \u2014 some browsers restrict what a page opened directly from disk is allowed to fetch."),
+                                        React.createElement("button", { onClick: () => loadSurahText(s.number), style: { background: COLORS.dustyPink, color: "#fff", border: "none", borderRadius: 16, padding: "0.5rem 1.2rem", fontSize: "0.8rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, "Try again"),
+                                        s.favoriteAyah && (React.createElement("div", { style: { marginTop: "1.2rem" } },
+                                            React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "1.4rem", color: COLORS.deepTaupe, lineHeight: 1.8 } }, s.favoriteAyah.arabic),
+                                            React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "0.95rem", color: COLORS.taupe, marginTop: "0.4rem" } },
+                                                "\"",
+                                                s.favoriteAyah.english,
+                                                "\"")))));
+                                }
+                                return React.createElement("div", { style: { padding: "2rem 0", color: COLORS.taupe, fontSize: "0.85rem" } }, "\u2726 Loading\u2026");
+                            })(),
+                            React.createElement("button", { onClick: () => { setBookOpen(false); setPage("surahs"); openSurah(s); }, style: { marginTop: "1.2rem", marginBottom: "0.5rem", background: "transparent", border: `1px solid ${COLORS.dustyPink}`, color: COLORS.deepTaupe, borderRadius: 16, padding: "0.5rem 1.2rem", fontSize: "0.78rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, "Open this Surah's journal page \u2726")))),
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.7rem 1.1rem", flexShrink: 0, borderTop: `1px solid ${COLORS.dustyPink}33`, background: COLORS.ivory } },
+                        React.createElement("button", { onClick: () => turnBookPage(-1), disabled: bookPageIdx === 0, "aria-label": "Previous page", style: { background: "transparent", border: `1px solid ${COLORS.dustyPink}`, color: COLORS.deepTaupe, borderRadius: "50%", width: 48, height: 48, cursor: bookPageIdx === 0 ? "default" : "pointer", opacity: bookPageIdx === 0 ? 0.35 : 1, fontSize: "1.2rem", flexShrink: 0 } }, "\u2039"),
+                        React.createElement("div", { style: { fontSize: "0.8rem", color: COLORS.taupe, fontFamily: "'Poppins', sans-serif", flexShrink: 0 } },
+                            bookPageIdx,
+                            " / ",
+                            BOOK_PAGES.length - 1),
+                        React.createElement("button", { onClick: () => turnBookPage(1), disabled: bookPageIdx === BOOK_PAGES.length - 1, "aria-label": "Next page", style: { background: "transparent", border: `1px solid ${COLORS.dustyPink}`, color: COLORS.deepTaupe, borderRadius: "50%", width: 48, height: 48, cursor: bookPageIdx === BOOK_PAGES.length - 1 ? "default" : "pointer", opacity: bookPageIdx === BOOK_PAGES.length - 1 ? 0.35 : 1, fontSize: "1.2rem", flexShrink: 0 } }, "\u203A"))));
             })(),
             React.createElement("footer", { style: { textAlign: "center", padding: "1.5rem", color: COLORS.taupe, fontSize: "0.75rem", borderTop: `1px solid ${COLORS.sand}`, marginTop: "2rem" } },
                 React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "1.1rem", color: COLORS.gold, marginBottom: "0.3rem" } }, "\u0648\u064E\u0646\u064E\u0632\u064E\u0651\u0644\u0652\u0646\u064E\u0627 \u0639\u064E\u0644\u064E\u064A\u0652\u0643\u064E \u0627\u0644\u0652\u0643\u0650\u062A\u064E\u0627\u0628\u064E \u062A\u0650\u0628\u0652\u064A\u064E\u0627\u0646\u064B\u0627 \u0644\u0650\u0651\u0643\u064F\u0644\u0650\u0651 \u0634\u064E\u064A\u0652\u0621\u064D"),
