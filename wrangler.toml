@@ -1,31 +1,35 @@
 name = "quran-journal-push"
 main = "src/index.js"
 compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
 
-# Runs every 15 minutes. This is just how often the Worker *checks* whether any
-# subscriber is due for a reminder right now — each individual user still only
-# gets pushed once every N hours (their own chosen interval), and only inside
-# their own chosen active-hours window. 15 minutes keeps the actual send time
-# reasonably close to the top of each user's interval without costing much on
-# Cloudflare's free tier (well within the free Cron Trigger + Worker request limits
-# for a personal-scale app).
+# Runs every 5 minutes. This is how often the Worker *checks* whether any
+# subscriber is due for a notification right now — for the general dhikr
+# reminders and challenges, each user still only gets pushed on their own
+# chosen schedule. For prayer-time (Adhan) notifications specifically, this
+# interval also determines how close to the exact prayer time the
+# notification arrives (worst case, up to ~5 minutes late). This was widened
+# from */15 to */5 specifically to make Adhan timing feel accurate — still
+# well within Cloudflare's free Cron Trigger + Worker request limits for a
+# personal-scale app (288 runs/day).
 [triggers]
-crons = ["*/15 * * * *"]
+crons = ["*/5 * * * *"]
 
 # Plain (non-secret) config. Safe to commit — the VAPID *public* key is meant to be
 # public, and the subject is just a contact email/URL required by the Web Push spec.
 [vars]
-VAPID_SUBJECT = "mailto:you@example.com"
-VAPID_PUBLIC_KEY = "REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY"
+VAPID_SUBJECT = "mailto:azankurazan@gmail.com"
+VAPID_PUBLIC_KEY = "BCfEermZWQo2WSJEX8bpIeiAVih2lqyZlsuf7Vo2aZOeoyAvE1HLiXnFCj42-ZrzR3qedmwUTCuKuZ93L0J7B_E"
 
 # The VAPID *private* key is set separately as an encrypted secret, never committed
-# to the repo. See push-server/README.md for the exact command.
+# to the repo. It's already set on the deployed Worker from before — you don't
+# need to set it again unless you're setting this up somewhere new:
 #   wrangler secret put VAPID_PRIVATE_KEY
 
-# KV namespace used to store each push subscription + the reminder preferences
-# that go with it (active hours, interval, on/off, last-sent time). Create this
-# with `wrangler kv namespace create SUBSCRIPTIONS` and paste the id it prints
-# below, replacing the placeholder.
+# KV namespace used to store each push subscription + the reminder/challenge/
+# prayer preferences that go with it, plus a short-lived cache of each day's
+# prayer times per location (keyed "pt:...") so many subscribers in the same
+# city don't each trigger a separate API call.
 [[kv_namespaces]]
 binding = "SUBSCRIPTIONS"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+id = "0148718ae6c249bdabb37f933b8c3f8c"
