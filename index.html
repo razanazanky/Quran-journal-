@@ -1024,6 +1024,66 @@ function QuranJournal() {
         const id = setInterval(() => setNow(new Date()), 1000);
         return () => clearInterval(id);
     }, [page]);
+    // ===== Foreground adhan audio =====
+    // Push notifications can only ever play the device's default notification
+    // sound — browsers give web apps no way to attach a custom sound to a
+    // background push. The only way to play a real adhan recording is to do it
+    // ourselves, client-side, while this tab/app is actually open. This effect
+    // ticks in the background (on any page, not just Prayers) and fires once
+    // per prayer, per day, the moment its time arrives.
+    //
+    // Streamed live from AlAdhan's own audio CDN (the same service this app
+    // already uses for prayer times) — Mishary Rashid Alafasy's recitation.
+    // No file to upload: the browser fetches it directly the moment it's
+    // needed. If you'd rather use a different voice, swap this URL for any
+    // of the others listed at https://aladhan.com/download-adhans, or point
+    // it at "adhan.mp3" to use a local file placed next to this HTML file
+    // instead.
+    const ADHAN_AUDIO_SRC = "https://cdn.aladhan.com/audio/adhans/a9.mp3";
+    const adhanPlayedRef = useRef({});
+    const [adhanAudioError, setAdhanAudioError] = useState("");
+    useEffect(() => {
+        if (!prayerData || !prayerData.timings)
+            return;
+        const checkAndPlay = () => {
+            const nowTs = new Date();
+            const todayKey = getDateKey(nowTs);
+            PRAYER_ORDER.filter((name) => name !== "Sunrise").forEach((name) => {
+                const t = timeStringToDate((prayerData.timings[name] || "").slice(0, 5), nowTs);
+                if (isNaN(t.getTime()))
+                    return;
+                const diffMs = nowTs.getTime() - t.getTime();
+                const key = `${name}:${todayKey}`;
+                // Fire once per prayer per day, any time from the exact moment up to
+                // 10 minutes after — wide enough to still catch it if you tapped a
+                // notification and it took you a bit to unlock your phone and open
+                // the app, not just if the app happened to already be sitting open.
+                if (diffMs >= 0 && diffMs < 10 * 60 * 1000 && !adhanPlayedRef.current[key]) {
+                    adhanPlayedRef.current[key] = true;
+                    const audio = new Audio(ADHAN_AUDIO_SRC);
+                    audio.play().catch((err) => {
+                        // Most likely cause: the browser blocked autoplay because
+                        // there hasn't been a tap/click on the page yet since it
+                        // loaded. Nothing to do here besides let the person know —
+                        // once they've tapped anywhere in the app, playback works.
+                        setAdhanAudioError("Couldn't auto-play the adhan (" + (err && err.message ? err.message : String(err)) + "). Tap anywhere in the app, then it should play at the next prayer.");
+                    });
+                }
+            });
+        };
+        // Check immediately on mount/prayerData load (covers opening the app
+        // fresh, e.g. by tapping a notification) and then every 15s while open.
+        checkAndPlay();
+        const id = setInterval(checkAndPlay, 15000);
+        // Also re-check whenever the app/tab comes back to the foreground —
+        // covers switching back to an already-open tab, not just a cold open.
+        const onVisible = () => { if (document.visibilityState === "visible") checkAndPlay(); };
+        document.addEventListener("visibilitychange", onVisible);
+        return () => {
+            clearInterval(id);
+            document.removeEventListener("visibilitychange", onVisible);
+        };
+    }, [prayerData]);
     // Autosave (debounced) whenever journal data changes, after the initial load.
     useEffect(() => {
         if (!hasLoaded)
@@ -2052,6 +2112,10 @@ function QuranJournal() {
                     React.createElement("div", { style: { textAlign: "center", margin: "1.5rem 0" } },
                         React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.7rem", color: COLORS.deepTaupe } }, "\uD83D\uDD4C Prayer-Time Notifications"),
                         React.createElement("div", { style: { color: COLORS.taupe, fontSize: "0.8rem", marginTop: "0.3rem" } }, "A push notification the moment each prayer's time begins \u2014 uses whichever location and calculation method you've set on the Qibla tab.")),
+                    React.createElement("div", { style: { background: `${COLORS.gold}18`, border: `1px solid ${COLORS.gold}55`, borderRadius: 14, padding: "1rem 1.2rem", marginBottom: "1.2rem" } },
+                        React.createElement("div", { style: { fontSize: "0.85rem", color: COLORS.deepTaupe, fontWeight: 500, marginBottom: "0.3rem" } }, "\uD83D\uDD0A Real adhan sound"),
+                        React.createElement("div", { style: { fontSize: "0.78rem", color: COLORS.taupe, lineHeight: 1.7 } }, "Push notifications (above) can only ever use your device's default notification sound \u2014 browsers don't allow a custom sound on background notifications, on any site. While the app is open, though, it will automatically play a real adhan (Mishary Rashid Alafasy) at the moment each prayer's time begins."),
+                        adhanAudioError && (React.createElement("div", { style: { fontSize: "0.75rem", color: "#a04", marginTop: "0.5rem" } }, adhanAudioError))),
                     React.createElement("div", { style: { background: "#fff", borderRadius: 16, padding: "1.3rem 1.4rem", border: `1px solid ${COLORS.sand}`, marginBottom: "1.2rem" } },
                         !prayerLocation && (React.createElement("div", { style: { background: `${COLORS.gold}22`, border: `1px solid ${COLORS.gold}55`, borderRadius: 12, padding: "0.9rem 1rem", marginBottom: "1rem", fontSize: "0.8rem", color: COLORS.deepTaupe } },
                             "Set your location on the ",
@@ -2171,9 +2235,9 @@ function QuranJournal() {
                 // else) no matter how deeply this component is nested in the page,
                 // which a plain "position: fixed" div sometimes failed to do on
                 // mobile browsers.
-                return ReactDOM.createPortal((React.createElement("div", { onClick: () => setBookOpen(false), style: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, width: "100vw", height: "100vh", background: "rgba(40,30,24,0.85)", zIndex: 99999, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem", overflowY: "auto" } },
-                    React.createElement("div", { onClick: e => e.stopPropagation(), style: { position: "relative", width: "100%", maxWidth: 520, margin: "2.5rem 0" } },
-                        React.createElement("button", { onClick: () => setBookOpen(false), "aria-label": "Close book", style: { position: "absolute", top: -44, right: 0, background: "rgba(255,255,255,0.15)", border: `1px solid ${COLORS.ivory}55`, color: "#fff", borderRadius: "50%", width: 34, height: 34, fontSize: "1.1rem", cursor: "pointer" } }, "\u2715"),
+                return ReactDOM.createPortal((React.createElement("div", { style: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, width: "100vw", height: "100vh", background: COLORS.ivory, zIndex: 99999, overflowY: "auto" } },
+                    React.createElement("div", { style: { position: "relative", width: "100%", maxWidth: 760, margin: "0 auto", padding: "calc(1rem + env(safe-area-inset-top)) 1rem calc(2rem + env(safe-area-inset-bottom))" } },
+                        React.createElement("button", { onClick: () => setBookOpen(false), "aria-label": "Close book", style: { position: "sticky", top: "0.5rem", float: "right", background: COLORS.sand, border: `1px solid ${COLORS.dustyPink}`, color: COLORS.deepTaupe, borderRadius: "50%", width: 38, height: 38, fontSize: "1.1rem", cursor: "pointer", zIndex: 2 } }, "\u2715"),
                         React.createElement("div", { key: bookPageIdx + "-" + bookFlipping, className: "book-page", onTouchStart: e => { bookTouchStartX.current = e.touches[0].clientX; }, onTouchEnd: e => {
                                 if (bookTouchStartX.current == null)
                                     return;
@@ -2185,13 +2249,13 @@ function QuranJournal() {
                                     turnBookPage(-1);
                             }, style: {
                                 background: `linear-gradient(120deg, ${COLORS.ivory}, ${COLORS.lightPink} 90%)`,
-                                borderRadius: "6px 16px 16px 6px",
+                                borderRadius: 16,
                                 padding: "2rem 1.8rem",
-                                minHeight: 380,
-                                maxHeight: "75vh",
-                                boxShadow: "inset 8px 0 16px -12px rgba(107,91,78,0.5), 0 20px 50px rgba(0,0,0,0.35)",
+                                minHeight: "calc(100vh - 6rem)",
+                                maxHeight: "none",
+                                boxShadow: "0 8px 30px rgba(107,91,78,0.15)",
                                 border: `1px solid ${COLORS.dustyPink}`,
-                                borderLeft: `6px solid ${COLORS.dustyPink}`,
+                                clear: "both",
                                 position: "relative",
                                 display: "flex",
                                 flexDirection: "column"
