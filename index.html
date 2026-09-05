@@ -1024,66 +1024,6 @@ function QuranJournal() {
         const id = setInterval(() => setNow(new Date()), 1000);
         return () => clearInterval(id);
     }, [page]);
-    // ===== Foreground adhan audio =====
-    // Push notifications can only ever play the device's default notification
-    // sound — browsers give web apps no way to attach a custom sound to a
-    // background push. The only way to play a real adhan recording is to do it
-    // ourselves, client-side, while this tab/app is actually open. This effect
-    // ticks in the background (on any page, not just Prayers) and fires once
-    // per prayer, per day, the moment its time arrives.
-    //
-    // Streamed live from AlAdhan's own audio CDN (the same service this app
-    // already uses for prayer times) — Mishary Rashid Alafasy's recitation.
-    // No file to upload: the browser fetches it directly the moment it's
-    // needed. If you'd rather use a different voice, swap this URL for any
-    // of the others listed at https://aladhan.com/download-adhans, or point
-    // it at "adhan.mp3" to use a local file placed next to this HTML file
-    // instead.
-    const ADHAN_AUDIO_SRC = "https://cdn.aladhan.com/audio/adhans/a9.mp3";
-    const adhanPlayedRef = useRef({});
-    const [adhanAudioError, setAdhanAudioError] = useState("");
-    useEffect(() => {
-        if (!prayerData || !prayerData.timings)
-            return;
-        const checkAndPlay = () => {
-            const nowTs = new Date();
-            const todayKey = getDateKey(nowTs);
-            PRAYER_ORDER.filter((name) => name !== "Sunrise").forEach((name) => {
-                const t = timeStringToDate((prayerData.timings[name] || "").slice(0, 5), nowTs);
-                if (isNaN(t.getTime()))
-                    return;
-                const diffMs = nowTs.getTime() - t.getTime();
-                const key = `${name}:${todayKey}`;
-                // Fire once per prayer per day, any time from the exact moment up to
-                // 10 minutes after — wide enough to still catch it if you tapped a
-                // notification and it took you a bit to unlock your phone and open
-                // the app, not just if the app happened to already be sitting open.
-                if (diffMs >= 0 && diffMs < 10 * 60 * 1000 && !adhanPlayedRef.current[key]) {
-                    adhanPlayedRef.current[key] = true;
-                    const audio = new Audio(ADHAN_AUDIO_SRC);
-                    audio.play().catch((err) => {
-                        // Most likely cause: the browser blocked autoplay because
-                        // there hasn't been a tap/click on the page yet since it
-                        // loaded. Nothing to do here besides let the person know —
-                        // once they've tapped anywhere in the app, playback works.
-                        setAdhanAudioError("Couldn't auto-play the adhan (" + (err && err.message ? err.message : String(err)) + "). Tap anywhere in the app, then it should play at the next prayer.");
-                    });
-                }
-            });
-        };
-        // Check immediately on mount/prayerData load (covers opening the app
-        // fresh, e.g. by tapping a notification) and then every 15s while open.
-        checkAndPlay();
-        const id = setInterval(checkAndPlay, 15000);
-        // Also re-check whenever the app/tab comes back to the foreground —
-        // covers switching back to an already-open tab, not just a cold open.
-        const onVisible = () => { if (document.visibilityState === "visible") checkAndPlay(); };
-        document.addEventListener("visibilitychange", onVisible);
-        return () => {
-            clearInterval(id);
-            document.removeEventListener("visibilitychange", onVisible);
-        };
-    }, [prayerData]);
     // Autosave (debounced) whenever journal data changes, after the initial load.
     useEffect(() => {
         if (!hasLoaded)
@@ -1551,7 +1491,7 @@ function QuranJournal() {
         setDhikrCounts(prev => { const next = { ...prev }; delete next[dhikrKey(id)]; return next; });
     };
     const todaysDhikrTotal = Object.keys(dhikrCounts).filter(k => k.startsWith(todayKey + ":")).reduce((sum, k) => sum + dhikrCounts[k], 0);
-    const openBook = () => { setBookPageIdx(0); setBookOpen(true); };
+    const openBook = (surahNumber) => { setBookPageIdx(surahNumber || 0); setBookOpen(true); };
     const turnBookPage = (delta) => {
         setBookPageIdx(idx => Math.max(0, Math.min(BOOK_PAGES.length - 1, idx + delta)));
         setBookFlipping(f => !f); // toggles the key parity so the CSS flip animation replays
@@ -1584,6 +1524,18 @@ function QuranJournal() {
             return;
         loadSurahText(num);
     }, [bookOpen, bookPageIdx]);
+    // Whenever the surah journal page's "Read Surah" tab is open on a surah we don't
+    // already have (offline or cached), fetch its complete text the same way the book does.
+    useEffect(() => {
+        if (activeTab !== "read" || !selectedSurah)
+            return;
+        const num = selectedSurah.number;
+        if (FULL_SURAH_TEXT[num] || fullTextCache[num])
+            return;
+        if (fullTextStatus[num] === "loading")
+            return;
+        loadSurahText(num);
+    }, [activeTab, selectedSurah]);
     useEffect(() => {
         if (!bookOpen)
             return;
@@ -2112,10 +2064,6 @@ function QuranJournal() {
                     React.createElement("div", { style: { textAlign: "center", margin: "1.5rem 0" } },
                         React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.7rem", color: COLORS.deepTaupe } }, "\uD83D\uDD4C Prayer-Time Notifications"),
                         React.createElement("div", { style: { color: COLORS.taupe, fontSize: "0.8rem", marginTop: "0.3rem" } }, "A push notification the moment each prayer's time begins \u2014 uses whichever location and calculation method you've set on the Qibla tab.")),
-                    React.createElement("div", { style: { background: `${COLORS.gold}18`, border: `1px solid ${COLORS.gold}55`, borderRadius: 14, padding: "1rem 1.2rem", marginBottom: "1.2rem" } },
-                        React.createElement("div", { style: { fontSize: "0.85rem", color: COLORS.deepTaupe, fontWeight: 500, marginBottom: "0.3rem" } }, "\uD83D\uDD0A Real adhan sound"),
-                        React.createElement("div", { style: { fontSize: "0.78rem", color: COLORS.taupe, lineHeight: 1.7 } }, "Push notifications (above) can only ever use your device's default notification sound \u2014 browsers don't allow a custom sound on background notifications, on any site. While the app is open, though, it will automatically play a real adhan (Mishary Rashid Alafasy) at the moment each prayer's time begins."),
-                        adhanAudioError && (React.createElement("div", { style: { fontSize: "0.75rem", color: "#a04", marginTop: "0.5rem" } }, adhanAudioError))),
                     React.createElement("div", { style: { background: "#fff", borderRadius: 16, padding: "1.3rem 1.4rem", border: `1px solid ${COLORS.sand}`, marginBottom: "1.2rem" } },
                         !prayerLocation && (React.createElement("div", { style: { background: `${COLORS.gold}22`, border: `1px solid ${COLORS.gold}55`, borderRadius: 12, padding: "0.9rem 1rem", marginBottom: "1rem", fontSize: "0.8rem", color: COLORS.deepTaupe } },
                             "Set your location on the ",
@@ -2226,97 +2174,93 @@ function QuranJournal() {
                     React.createElement("div", { style: { textAlign: "center", marginTop: "1.5rem" } },
                         React.createElement("button", { onClick: resetJournal, style: { background: "transparent", border: `1px solid ${COLORS.taupe}66`, color: COLORS.taupe, borderRadius: 20, padding: "0.5rem 1.2rem", fontSize: "0.75rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, "Clear all my saved journal data on this device"),
                         React.createElement("div", { style: { fontSize: "0.68rem", color: COLORS.taupe, opacity: 0.7, marginTop: "0.4rem" } }, "Your notes, duas, favorites, and tracked days are saved only in this browser, on this device."))))),
-            React.createElement("button", { onClick: openBook, "aria-label": "Open the Quran book", className: "pin-book-btn", style: { position: "fixed", bottom: 22, right: 22, zIndex: 500, width: 60, height: 60, borderRadius: "50%", background: `linear-gradient(135deg, ${COLORS.gold}, ${COLORS.dustyPink})`, border: `2px solid ${COLORS.ivory}`, color: "#fff", fontSize: "1.6rem", cursor: "pointer", boxShadow: "0 6px 18px rgba(107,91,78,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }, title: "Open the Quran" }, "\uD83D\uDCD6"),
+            React.createElement("button", { onClick: () => openBook(page === "surahs" && selectedSurah ? selectedSurah.number : 0), "aria-label": "Open the Quran book", className: "pin-book-btn", style: { position: "fixed", bottom: "calc(22px + env(safe-area-inset-bottom))", right: "calc(22px + env(safe-area-inset-right))", zIndex: 500, width: 60, height: 60, borderRadius: "50%", background: `linear-gradient(135deg, ${COLORS.gold}, ${COLORS.dustyPink})`, border: `2px solid ${COLORS.ivory}`, color: "#fff", fontSize: "1.6rem", cursor: "pointer", boxShadow: "0 6px 18px rgba(107,91,78,0.35)", display: "flex", alignItems: "center", justifyContent: "center", touchAction: "manipulation" }, title: "Open the Quran" }, "\uD83D\uDCD6"),
             bookOpen && (() => {
                 const p = BOOK_PAGES[bookPageIdx];
                 const s = p.isCover ? null : ALL_SURAHS.find(x => x.number === p.surahNumber);
-                // Rendered via a portal straight into document.body — this guarantees
-                // a true full-screen takeover (covering the nav bar and everything
-                // else) no matter how deeply this component is nested in the page,
-                // which a plain "position: fixed" div sometimes failed to do on
-                // mobile browsers.
-                return ReactDOM.createPortal((React.createElement("div", { style: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, width: "100vw", height: "100vh", background: COLORS.ivory, zIndex: 99999, overflowY: "auto" } },
-                    React.createElement("div", { style: { position: "relative", width: "100%", maxWidth: 760, margin: "0 auto", padding: "calc(1rem + env(safe-area-inset-top)) 1rem calc(2rem + env(safe-area-inset-bottom))" } },
-                        React.createElement("button", { onClick: () => setBookOpen(false), "aria-label": "Close book", style: { position: "sticky", top: "0.5rem", float: "right", background: COLORS.sand, border: `1px solid ${COLORS.dustyPink}`, color: COLORS.deepTaupe, borderRadius: "50%", width: 38, height: 38, fontSize: "1.1rem", cursor: "pointer", zIndex: 2 } }, "\u2715"),
-                        React.createElement("div", { key: bookPageIdx + "-" + bookFlipping, className: "book-page", onTouchStart: e => { bookTouchStartX.current = e.touches[0].clientX; }, onTouchEnd: e => {
-                                if (bookTouchStartX.current == null)
-                                    return;
-                                const dx = e.changedTouches[0].clientX - bookTouchStartX.current;
-                                bookTouchStartX.current = null;
-                                if (dx < -40)
-                                    turnBookPage(1);
-                                else if (dx > 40)
-                                    turnBookPage(-1);
-                            }, style: {
-                                background: `linear-gradient(120deg, ${COLORS.ivory}, ${COLORS.lightPink} 90%)`,
-                                borderRadius: 16,
-                                padding: "2rem 1.8rem",
-                                minHeight: "calc(100vh - 6rem)",
-                                maxHeight: "none",
-                                boxShadow: "0 8px 30px rgba(107,91,78,0.15)",
-                                border: `1px solid ${COLORS.dustyPink}`,
-                                clear: "both",
-                                position: "relative",
-                                display: "flex",
-                                flexDirection: "column"
-                            } },
-                            React.createElement("div", { style: { position: "absolute", top: 14, left: 18, fontSize: "0.7rem", color: COLORS.gold, letterSpacing: "0.1em" } },
-                                "\u2726 ",
-                                p.isCover ? "COVER" : `PAGE ${bookPageIdx} of ${BOOK_PAGES.length - 1}`),
-                            !p.isCover && s && (React.createElement("button", { onClick: () => toggleFavorite(s.number), "aria-label": favorites.includes(s.number) ? "Unpin favorite" : "Pin as favorite", style: { position: "absolute", top: 10, right: 14, background: "transparent", border: "none", fontSize: "1.2rem", cursor: "pointer" } }, favorites.includes(s.number) ? "💛" : "🤍")),
-                            React.createElement("div", { style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: p.isCover ? "center" : "flex-start", textAlign: "center", marginTop: "1.2rem", overflowY: "auto" } }, p.isCover ? (React.createElement(React.Fragment, null,
-                                React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "2.2rem", color: COLORS.gold, marginBottom: "0.5rem" } }, "\u0628\u0650\u0633\u0652\u0645\u0650 \u0627\u0644\u0644\u064E\u0651\u0647\u0650 \u0627\u0644\u0631\u064E\u0651\u062D\u0652\u0645\u064E\u0670\u0646\u0650 \u0627\u0644\u0631\u064E\u0651\u062D\u0650\u064A\u0645\u0650"),
-                                React.createElement("div", { className: "gold-divider" }),
-                                React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.6rem", color: COLORS.deepTaupe, marginTop: "0.8rem" } }, "The Light of My Heart"),
-                                React.createElement("div", { style: { fontSize: "0.82rem", color: COLORS.taupe, marginTop: "0.6rem", maxWidth: 320 } }, "All 114 surahs, complete. A few short ones open instantly offline; the rest load live from a verified Quran text service the first time you visit them, then stay saved on this device. Use the arrows (or \u2190 \u2192) to turn the page."))) : (React.createElement(React.Fragment, null,
-                                React.createElement("div", { style: { fontSize: "0.72rem", color: COLORS.taupe } },
-                                    s.number,
-                                    ". ",
-                                    s.name,
-                                    " \u2014 ",
-                                    s.meaning,
-                                    " \u2022 ",
-                                    s.ayahs,
-                                    " ayahs"),
-                                React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "1.7rem", color: COLORS.gold, margin: "0.3rem 0 0.9rem" } }, s.arabic),
-                                React.createElement("div", { className: "gold-divider" }),
-                                (() => {
-                                    const text = FULL_SURAH_TEXT[s.number] || fullTextCache[s.number];
-                                    const status = fullTextStatus[s.number];
-                                    if (text) {
-                                        return text.map((ayah, i) => (React.createElement("div", { key: i, style: { margin: "0.9rem 0", width: "100%" } },
-                                            React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "1.35rem", color: COLORS.deepTaupe, lineHeight: 2 } },
-                                                ayah.arabic,
-                                                " ",
-                                                React.createElement("span", { style: { fontFamily: "'Poppins', sans-serif", fontSize: "0.65rem", color: COLORS.gold, border: `1px solid ${COLORS.gold}66`, borderRadius: "50%", padding: "0.1rem 0.4rem" } }, i + 1)),
-                                            React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "0.92rem", color: COLORS.taupe, marginTop: "0.25rem" } }, ayah.english))));
-                                    }
-                                    if (status === "loading") {
-                                        return (React.createElement("div", { style: { padding: "2rem 0", color: COLORS.taupe, fontSize: "0.85rem" } }, "\u2726 Fetching the full surah from the Quran text service\u2026"));
-                                    }
-                                    if (status === "error") {
-                                        return (React.createElement("div", { style: { padding: "1.5rem 0" } },
-                                            React.createElement("div", { style: { color: COLORS.taupe, fontSize: "0.85rem", marginBottom: "0.5rem" } }, "Couldn't load this surah's full text."),
-                                            fullTextErrorDetail[s.number] && (React.createElement("div", { style: { fontFamily: "monospace", fontSize: "0.7rem", color: "#a04", background: "#fee", border: "1px solid #f9c", borderRadius: 8, padding: "0.5rem 0.7rem", marginBottom: "0.8rem", wordBreak: "break-word", textAlign: "left" } }, fullTextErrorDetail[s.number])),
-                                            React.createElement("div", { style: { fontSize: "0.72rem", color: COLORS.taupe, opacity: 0.8, marginBottom: "0.8rem" } }, "If this keeps happening even with internet, try opening this file through a local server (e.g. VS Code's \"Live Server\" extension) instead of double-clicking it \u2014 some browsers restrict what a page opened directly from disk is allowed to fetch."),
-                                            React.createElement("button", { onClick: () => loadSurahText(s.number), style: { background: COLORS.dustyPink, color: "#fff", border: "none", borderRadius: 16, padding: "0.4rem 1.1rem", fontSize: "0.78rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, "Try again"),
-                                            s.favoriteAyah && (React.createElement("div", { style: { marginTop: "1.2rem" } },
-                                                React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "1.4rem", color: COLORS.deepTaupe, lineHeight: 1.8 } }, s.favoriteAyah.arabic),
-                                                React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "0.95rem", color: COLORS.taupe, marginTop: "0.4rem" } },
-                                                    "\"",
-                                                    s.favoriteAyah.english,
-                                                    "\"")))));
-                                    }
-                                    return React.createElement("div", { style: { padding: "2rem 0", color: COLORS.taupe, fontSize: "0.85rem" } }, "\u2726 Loading\u2026");
-                                })(),
-                                React.createElement("button", { onClick: () => { setBookOpen(false); setPage("surahs"); openSurah(s); }, style: { marginTop: "1.2rem", background: "transparent", border: `1px solid ${COLORS.dustyPink}`, color: COLORS.deepTaupe, borderRadius: 16, padding: "0.4rem 1rem", fontSize: "0.75rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, "Open this Surah's journal page \u2726")))),
-                            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem", flexShrink: 0, paddingTop: "0.6rem", borderTop: `1px solid ${COLORS.dustyPink}33` } },
-                                React.createElement("button", { onClick: () => turnBookPage(-1), disabled: bookPageIdx === 0, "aria-label": "Previous page", style: { background: "transparent", border: `1px solid ${COLORS.dustyPink}`, color: COLORS.deepTaupe, borderRadius: "50%", width: 42, height: 42, cursor: bookPageIdx === 0 ? "default" : "pointer", opacity: bookPageIdx === 0 ? 0.35 : 1, fontSize: "1.1rem", flexShrink: 0 } }, "\u2039"),
-                                React.createElement("div", { style: { fontSize: "0.78rem", color: COLORS.taupe, fontFamily: "'Poppins', sans-serif", flexShrink: 0 } },
-                                    bookPageIdx,
-                                    " / ",
-                                    BOOK_PAGES.length - 1),
-                                React.createElement("button", { onClick: () => turnBookPage(1), disabled: bookPageIdx === BOOK_PAGES.length - 1, "aria-label": "Next page", style: { background: "transparent", border: `1px solid ${COLORS.dustyPink}`, color: COLORS.deepTaupe, borderRadius: "50%", width: 42, height: 42, cursor: bookPageIdx === BOOK_PAGES.length - 1 ? "default" : "pointer", opacity: bookPageIdx === BOOK_PAGES.length - 1 ? 0.35 : 1, fontSize: "1.1rem", flexShrink: 0 } }, "\u203A")))))), document.body);
+                return (React.createElement("div", { style: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: `linear-gradient(160deg, ${COLORS.ivory}, ${COLORS.lightPink})`, zIndex: 1000, display: "flex", flexDirection: "column", paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)", paddingLeft: "env(safe-area-inset-left)", paddingRight: "env(safe-area-inset-right)" } },
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.9rem 1.1rem 0.6rem", flexShrink: 0, borderBottom: `1px solid ${COLORS.dustyPink}33` } },
+                        React.createElement("div", { style: { fontSize: "0.72rem", color: COLORS.gold, letterSpacing: "0.1em", fontFamily: "'Poppins', sans-serif" } },
+                            "\u2726 ",
+                            p.isCover ? "COVER" : `PAGE ${bookPageIdx} OF ${BOOK_PAGES.length - 1}`),
+                        React.createElement("div", { style: { display: "flex", alignItems: "center", gap: "0.5rem" } },
+                            !p.isCover && s && (React.createElement("button", { onClick: () => toggleFavorite(s.number), "aria-label": favorites.includes(s.number) ? "Unpin favorite" : "Pin as favorite", style: { background: "transparent", border: "none", fontSize: "1.3rem", cursor: "pointer", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center" } }, favorites.includes(s.number) ? "💛" : "🤍")),
+                            React.createElement("button", { onClick: () => setBookOpen(false), "aria-label": "Close book", style: { background: `${COLORS.dustyPink}22`, border: `1px solid ${COLORS.dustyPink}55`, color: COLORS.deepTaupe, borderRadius: "50%", width: 40, height: 40, fontSize: "1.05rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 } }, "\u2715"))),
+                    React.createElement("div", { key: bookPageIdx + "-" + bookFlipping, className: "book-page", onTouchStart: e => { bookTouchStartX.current = e.touches[0].clientX; }, onTouchEnd: e => {
+                            if (bookTouchStartX.current == null)
+                                return;
+                            const dx = e.changedTouches[0].clientX - bookTouchStartX.current;
+                            bookTouchStartX.current = null;
+                            if (dx < -40)
+                                turnBookPage(1);
+                            else if (dx > 40)
+                                turnBookPage(-1);
+                        }, style: {
+                            flex: 1,
+                            overflowY: "auto",
+                            WebkitOverflowScrolling: "touch",
+                            padding: "1.4rem 1.3rem 1.6rem",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: p.isCover ? "center" : "flex-start",
+                            textAlign: "center",
+                            maxWidth: 640,
+                            width: "100%",
+                            margin: "0 auto"
+                        } }, p.isCover ? (React.createElement(React.Fragment, null,
+                            React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "2.4rem", color: COLORS.gold, marginBottom: "0.5rem" } }, "\u0628\u0650\u0633\u0652\u0645\u0650 \u0627\u0644\u0644\u064E\u0651\u0647\u0650 \u0627\u0644\u0631\u064E\u0651\u062D\u0652\u0645\u064E\u0670\u0646\u0650 \u0627\u0644\u0631\u064E\u0651\u062D\u0650\u064A\u0645\u0650"),
+                            React.createElement("div", { className: "gold-divider" }),
+                            React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontSize: "1.8rem", color: COLORS.deepTaupe, marginTop: "0.8rem" } }, "The Light of My Heart"),
+                            React.createElement("div", { style: { fontSize: "0.85rem", color: COLORS.taupe, marginTop: "0.6rem", maxWidth: 360 } }, "All 114 surahs, complete. A few short ones open instantly offline; the rest load live from a verified Quran text service the first time you visit them, then stay saved on this device. Swipe, or use the arrows (or \u2190 \u2192), to turn the page."))) : (React.createElement(React.Fragment, null,
+                            React.createElement("div", { style: { fontSize: "0.75rem", color: COLORS.taupe } },
+                                s.number,
+                                ". ",
+                                s.name,
+                                " \u2014 ",
+                                s.meaning,
+                                " \u2022 ",
+                                s.ayahs,
+                                " ayahs"),
+                            React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "1.9rem", color: COLORS.gold, margin: "0.3rem 0 0.9rem" } }, s.arabic),
+                            React.createElement("div", { className: "gold-divider" }),
+                            (() => {
+                                const text = FULL_SURAH_TEXT[s.number] || fullTextCache[s.number];
+                                const status = fullTextStatus[s.number];
+                                if (text) {
+                                    return text.map((ayah, i) => (React.createElement("div", { key: i, style: { margin: "0.9rem 0", width: "100%" } },
+                                        React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "1.45rem", color: COLORS.deepTaupe, lineHeight: 2 } },
+                                            ayah.arabic,
+                                            " ",
+                                            React.createElement("span", { style: { fontFamily: "'Poppins', sans-serif", fontSize: "0.65rem", color: COLORS.gold, border: `1px solid ${COLORS.gold}66`, borderRadius: "50%", padding: "0.1rem 0.4rem" } }, i + 1)),
+                                        React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "0.95rem", color: COLORS.taupe, marginTop: "0.25rem" } }, ayah.english))));
+                                }
+                                if (status === "loading") {
+                                    return (React.createElement("div", { style: { padding: "2rem 0", color: COLORS.taupe, fontSize: "0.85rem" } }, "\u2726 Fetching the full surah from the Quran text service\u2026"));
+                                }
+                                if (status === "error") {
+                                    return (React.createElement("div", { style: { padding: "1.5rem 0" } },
+                                        React.createElement("div", { style: { color: COLORS.taupe, fontSize: "0.85rem", marginBottom: "0.5rem" } }, "Couldn't load this surah's full text."),
+                                        fullTextErrorDetail[s.number] && (React.createElement("div", { style: { fontFamily: "monospace", fontSize: "0.7rem", color: "#a04", background: "#fee", border: "1px solid #f9c", borderRadius: 8, padding: "0.5rem 0.7rem", marginBottom: "0.8rem", wordBreak: "break-word", textAlign: "left" } }, fullTextErrorDetail[s.number])),
+                                        React.createElement("div", { style: { fontSize: "0.72rem", color: COLORS.taupe, opacity: 0.8, marginBottom: "0.8rem" } }, "If this keeps happening even with internet, try opening this file through a local server (e.g. VS Code's \"Live Server\" extension) instead of double-clicking it \u2014 some browsers restrict what a page opened directly from disk is allowed to fetch."),
+                                        React.createElement("button", { onClick: () => loadSurahText(s.number), style: { background: COLORS.dustyPink, color: "#fff", border: "none", borderRadius: 16, padding: "0.5rem 1.2rem", fontSize: "0.8rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, "Try again"),
+                                        s.favoriteAyah && (React.createElement("div", { style: { marginTop: "1.2rem" } },
+                                            React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "1.4rem", color: COLORS.deepTaupe, lineHeight: 1.8 } }, s.favoriteAyah.arabic),
+                                            React.createElement("div", { style: { fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: "0.95rem", color: COLORS.taupe, marginTop: "0.4rem" } },
+                                                "\"",
+                                                s.favoriteAyah.english,
+                                                "\"")))));
+                                }
+                                return React.createElement("div", { style: { padding: "2rem 0", color: COLORS.taupe, fontSize: "0.85rem" } }, "\u2726 Loading\u2026");
+                            })(),
+                            React.createElement("button", { onClick: () => { setBookOpen(false); setPage("surahs"); openSurah(s); }, style: { marginTop: "1.2rem", marginBottom: "0.5rem", background: "transparent", border: `1px solid ${COLORS.dustyPink}`, color: COLORS.deepTaupe, borderRadius: 16, padding: "0.5rem 1.2rem", fontSize: "0.78rem", cursor: "pointer", fontFamily: "'Poppins', sans-serif" } }, "Open this Surah's journal page \u2726")))),
+                    React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.7rem 1.1rem", flexShrink: 0, borderTop: `1px solid ${COLORS.dustyPink}33`, background: COLORS.ivory } },
+                        React.createElement("button", { onClick: () => turnBookPage(-1), disabled: bookPageIdx === 0, "aria-label": "Previous page", style: { background: "transparent", border: `1px solid ${COLORS.dustyPink}`, color: COLORS.deepTaupe, borderRadius: "50%", width: 48, height: 48, cursor: bookPageIdx === 0 ? "default" : "pointer", opacity: bookPageIdx === 0 ? 0.35 : 1, fontSize: "1.2rem", flexShrink: 0 } }, "\u2039"),
+                        React.createElement("div", { style: { fontSize: "0.8rem", color: COLORS.taupe, fontFamily: "'Poppins', sans-serif", flexShrink: 0 } },
+                            bookPageIdx,
+                            " / ",
+                            BOOK_PAGES.length - 1),
+                        React.createElement("button", { onClick: () => turnBookPage(1), disabled: bookPageIdx === BOOK_PAGES.length - 1, "aria-label": "Next page", style: { background: "transparent", border: `1px solid ${COLORS.dustyPink}`, color: COLORS.deepTaupe, borderRadius: "50%", width: 48, height: 48, cursor: bookPageIdx === BOOK_PAGES.length - 1 ? "default" : "pointer", opacity: bookPageIdx === BOOK_PAGES.length - 1 ? 0.35 : 1, fontSize: "1.2rem", flexShrink: 0 } }, "\u203A"))));
             })(),
             React.createElement("footer", { style: { textAlign: "center", padding: "1.5rem", color: COLORS.taupe, fontSize: "0.75rem", borderTop: `1px solid ${COLORS.sand}`, marginTop: "2rem" } },
                 React.createElement("div", { style: { fontFamily: "'Amiri', serif", fontSize: "1.1rem", color: COLORS.gold, marginBottom: "0.3rem" } }, "\u0648\u064E\u0646\u064E\u0632\u064E\u0651\u0644\u0652\u0646\u064E\u0627 \u0639\u064E\u0644\u064E\u064A\u0652\u0643\u064E \u0627\u0644\u0652\u0643\u0650\u062A\u064E\u0627\u0628\u064E \u062A\u0650\u0628\u0652\u064A\u064E\u0627\u0646\u064B\u0627 \u0644\u0650\u0651\u0643\u064F\u0644\u0650\u0651 \u0634\u064E\u064A\u0652\u0621\u064D"),
